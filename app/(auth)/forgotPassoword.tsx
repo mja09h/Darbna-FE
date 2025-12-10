@@ -12,9 +12,11 @@ import {
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "../../context/LanguageContext";
 
 const ForgotPassword = () => {
   const router = useRouter();
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
 
   return (
@@ -38,15 +40,13 @@ const ForgotPassword = () => {
           style={styles.logo}
         />
 
-        <Text style={styles.title}>Forgot Password?</Text>
-        <Text style={styles.subtitle}>
-          Enter your email and we'll send you a link to reset your password
-        </Text>
+        <Text style={styles.title}>{t.auth.forgotPasswordTitle}</Text>
+        <Text style={styles.subtitle}>{t.auth.forgotPasswordSubtitle}</Text>
 
         <View style={styles.formContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder={t.auth.email}
             placeholderTextColor="#a89080"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -55,14 +55,14 @@ const ForgotPassword = () => {
           />
 
           <TouchableOpacity style={styles.resetButton}>
-            <Text style={styles.resetButtonText}>Send Reset Link</Text>
+            <Text style={styles.resetButtonText}>{t.auth.sendResetLink}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.backToLoginContainer}>
           <Ionicons name="arrow-back" size={16} color="#ad5410" />
           <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-            <Text style={styles.backToLoginText}>Back to Login</Text>
+            <Text style={styles.backToLoginText}>{t.auth.backToLogin}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

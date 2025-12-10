@@ -14,10 +14,12 @@ import {
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { COUNTRIES } from "../../data/Countries";
+import { useLanguage } from "../../context/LanguageContext";
+import { getCountries } from "../../data/Countries";
 
 const Register = () => {
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -27,7 +29,8 @@ const Register = () => {
   const [countryModalVisible, setCountryModalVisible] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
 
-  const filteredCountries = COUNTRIES.filter((country) =>
+  const countries = getCountries(language);
+  const filteredCountries = countries.filter((country) =>
     country.toLowerCase().includes(countrySearch.toLowerCase())
   );
 
@@ -51,20 +54,20 @@ const Register = () => {
           style={styles.logo}
         />
 
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join us today</Text>
+        <Text style={styles.title}>{t.auth.createAccount}</Text>
+        <Text style={styles.subtitle}>{t.auth.joinUsToday}</Text>
 
         <View style={styles.formContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Name"
+            placeholder={t.auth.name}
             placeholderTextColor="#a89080"
             value={name}
             onChangeText={(text) => setName(text.trim())}
           />
           <TextInput
             style={styles.input}
-            placeholder="Username"
+            placeholder={t.auth.username}
             placeholderTextColor="#a89080"
             autoCapitalize="none"
             value={username}
@@ -72,7 +75,7 @@ const Register = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder={t.auth.email}
             placeholderTextColor="#a89080"
             autoCapitalize="none"
             keyboardType="email-address"
@@ -81,7 +84,7 @@ const Register = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder={t.auth.password}
             placeholderTextColor="#a89080"
             secureTextEntry
             value={password}
@@ -89,7 +92,7 @@ const Register = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Confirm Password"
+            placeholder={t.auth.confirmPassword}
             placeholderTextColor="#a89080"
             secureTextEntry
             value={confirmPassword}
@@ -106,37 +109,41 @@ const Register = () => {
                 !selectedCountry && styles.countrySelectorPlaceholder,
               ]}
             >
-              {selectedCountry || "Select Country"}
+              {selectedCountry || t.auth.selectCountry}
             </Text>
             <Text style={styles.countrySelectorArrow}>▼</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.registerButton}>
-            <Text style={styles.registerButtonText}>Sign Up</Text>
+            <Text style={styles.registerButtonText}>{t.auth.signUp}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.dividerContainer}>
           <View style={styles.divider} />
-          <Text style={styles.dividerText}>or</Text>
+          <Text style={styles.dividerText}>{t.auth.or}</Text>
           <View style={styles.divider} />
         </View>
 
         <View style={styles.socialButtonsColumn}>
           <TouchableOpacity style={styles.socialButton}>
             <Ionicons name="logo-google" size={20} color="#f5e6d3" />
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
+            <Text style={styles.socialButtonText}>
+              {t.auth.continueWithGoogle}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.socialButton}>
             <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
-            <Text style={styles.socialButtonText}>Continue with Apple</Text>
+            <Text style={styles.socialButtonText}>
+              {t.auth.continueWithApple}
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.loginContainer}>
-          <Text style={styles.loginText}>Already have an account?</Text>
+          <Text style={styles.loginText}>{t.auth.haveAccount}</Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-            <Text style={styles.loginLink}>Login</Text>
+            <Text style={styles.loginLink}>{t.auth.login}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -151,7 +158,7 @@ const Register = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Country</Text>
+              <Text style={styles.modalTitle}>{t.auth.selectCountry}</Text>
               <TouchableOpacity
                 onPress={() => {
                   setCountryModalVisible(false);
@@ -164,7 +171,7 @@ const Register = () => {
 
             <TextInput
               style={styles.searchInput}
-              placeholder="Search country..."
+              placeholder={t.auth.searchCountry}
               placeholderTextColor="#a89080"
               value={countrySearch}
               onChangeText={(text) => setCountrySearch(text.trim())}
@@ -195,7 +202,7 @@ const Register = () => {
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <Text style={styles.noResults}>No countries found</Text>
+                <Text style={styles.noResults}>{t.auth.noCountriesFound}</Text>
               }
             />
           </View>

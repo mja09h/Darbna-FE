@@ -13,7 +13,7 @@ const _layout = () => {
       >
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
-        <Stack.Screen name="forgotPassowrd" options={{ headerShown: false }} />
+        <Stack.Screen name="forgotPassoword" options={{ headerShown: false }} />
       </Stack>
     </>
   );

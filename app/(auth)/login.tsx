@@ -12,9 +12,11 @@ import {
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "../../context/LanguageContext";
 
 const Login = () => {
   const router = useRouter();
+  const { t } = useLanguage();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -32,13 +34,13 @@ const Login = () => {
           style={styles.logo}
         />
 
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+        <Text style={styles.title}>{t.auth.welcomeBack}</Text>
+        <Text style={styles.subtitle}>{t.auth.signInToContinue}</Text>
 
         <View style={styles.formContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Email or Username"
+            placeholder={t.auth.emailOrUsername}
             placeholderTextColor="#a89080"
             autoCapitalize="none"
             value={emailOrUsername}
@@ -46,7 +48,7 @@ const Login = () => {
           />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder={t.auth.password}
             placeholderTextColor="#a89080"
             secureTextEntry
             value={password}
@@ -55,37 +57,43 @@ const Login = () => {
 
           <TouchableOpacity
             style={styles.forgotPassword}
-            onPress={() => router.push("/(auth)/forgotPassowrd")}
+            onPress={() => router.push("/(auth)/forgotPassoword")}
           >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Text style={styles.forgotPasswordText}>
+              {t.auth.forgotPassword}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.loginButton}>
-            <Text style={styles.loginButtonText}>Login</Text>
+            <Text style={styles.loginButtonText}>{t.auth.login}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.dividerContainer}>
           <View style={styles.divider} />
-          <Text style={styles.dividerText}>or</Text>
+          <Text style={styles.dividerText}>{t.auth.or}</Text>
           <View style={styles.divider} />
         </View>
 
         <View style={styles.socialButtonsColumn}>
           <TouchableOpacity style={styles.socialButton}>
             <Ionicons name="logo-google" size={20} color="#f5e6d3" />
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
+            <Text style={styles.socialButtonText}>
+              {t.auth.continueWithGoogle}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.socialButton}>
             <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
-            <Text style={styles.socialButtonText}>Continue with Apple</Text>
+            <Text style={styles.socialButtonText}>
+              {t.auth.continueWithApple}
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>Don't have an account?</Text>
+          <Text style={styles.signUpText}>{t.auth.noAccount}</Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-            <Text style={styles.signUpLink}>Sign Up</Text>
+            <Text style={styles.signUpLink}>{t.auth.signUp}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
