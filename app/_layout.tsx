@@ -8,23 +8,22 @@ import { SettingsProvider } from "../context/SettingsContext";
 const _layout = () => {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <Stack initialRouteName="(onBoarding)">
-          <Stack.Screen name="(onBoarding)" options={{ headerShown: false }} />
-          <Stack.Screen name="(protected)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack>
-      </AuthProvider>
       <ThemeProvider>
         <SettingsProvider>
-          <Stack initialRouteName="(onBoarding)">
-            <Stack.Screen
-              name="(onBoarding)"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen name="(protected)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          </Stack>
+          <AuthProvider>
+            <Stack initialRouteName="(onBoarding)">
+              <Stack.Screen
+                name="(onBoarding)"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="(protected)"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+            </Stack>
+          </AuthProvider>
         </SettingsProvider>
       </ThemeProvider>
     </LanguageProvider>
