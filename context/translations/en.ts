@@ -9,19 +9,42 @@ export const en = {
     getStarted: "Get Started",
   },
 
-  // Auth Screens
-  auth: {
-    login: "Login",
-    register: "Register",
-    email: "Email",
-    password: "Password",
-    confirmPassword: "Confirm Password",
-    forgotPassword: "Forgot Password?",
-    noAccount: "Don't have an account?",
-    haveAccount: "Already have an account?",
-    signUp: "Sign Up",
-    signIn: "Sign In",
-  },
+
+    // Auth Screens
+    auth: {
+        // Login
+        login: "Login",
+        welcomeBack: "Welcome Back",
+        signInToContinue: "Sign in to continue",
+        emailOrUsername: "Email or Username",
+        password: "Password",
+        forgotPassword: "Forgot Password?",
+        noAccount: "Don't have an account?",
+        signUp: "Sign Up",
+        or: "or",
+        continueWithGoogle: "Continue with Google",
+        continueWithApple: "Continue with Apple",
+
+        // Register
+        register: "Register",
+        createAccount: "Create Account",
+        joinUsToday: "Join us today",
+        name: "Name",
+        username: "Username",
+        email: "Email",
+        confirmPassword: "Confirm Password",
+        selectCountry: "Select Country",
+        searchCountry: "Search country...",
+        noCountriesFound: "No countries found",
+        haveAccount: "Already have an account?",
+
+        // Forgot Password
+        forgotPasswordTitle: "Forgot Password?",
+        forgotPasswordSubtitle: "Enter your email and we'll send you a link to reset your password",
+        sendResetLink: "Send Reset Link",
+        backToLogin: "Back to Login",
+    },
+
 
   // Common
   common: {
