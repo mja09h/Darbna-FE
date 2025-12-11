@@ -1,0 +1,505 @@
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "expo-router";
+import { useLanguage } from "../../../../../context/LanguageContext";
+import { useTheme } from "../../../../../context/ThemeContext";
+import { useSettings } from "../../../../../context/SettingsContext";
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
+
+const SettingsScreen = () => {
+  const { language, setLanguage, t, isRTL } = useLanguage();
+  const { theme, setTheme, colors, isDark } = useTheme();
+  const { units, setUnits } = useSettings();
+  const router = useRouter();
+
+  const [locationStatus, setLocationStatus] =
+    useState<Location.PermissionStatus | null>(null);
+  const [notificationStatus, setNotificationStatus] =
+    useState<Notifications.PermissionStatus | null>(null);
+
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  const checkPermissions = async () => {
+    // Check location permission
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      setLocationStatus(status);
+    } catch (error) {
+      console.log("Error checking location permission:", error);
+    }
+
+    // Check notification permission
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotificationStatus(status);
+    } catch (error) {
+      console.log("Error checking notification permission:", error);
+    }
+  };
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationStatus(status);
+      if (status !== "granted") {
+        Alert.alert(
+          t.common.error,
+          "Location permission is required for this feature."
+        );
+      }
+    } catch (error) {
+      console.log("Error requesting location permission:", error);
+    }
+  };
+
+  const requestNotificationPermission = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      setNotificationStatus(status);
+      if (status !== "granted") {
+        Alert.alert(
+          t.common.error,
+          "Notification permission is required for this feature."
+        );
+      }
+    } catch (error) {
+      console.log("Error requesting notification permission:", error);
+    }
+  };
+
+  const getPermissionStatusText = (status: string | null) => {
+    if (!status) return t.settings.permissionNotDetermined;
+    if (status === "granted") return t.settings.permissionGranted;
+    if (status === "denied") return t.settings.permissionDenied;
+    return t.settings.permissionNotDetermined;
+  };
+
+  const renderSection = (
+    title: string,
+    children: React.ReactNode,
+    isLast: boolean = false
+  ) => (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {title}
+      </Text>
+      {children}
+      {!isLast && (
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+      )}
+    </View>
+  );
+
+  const renderSettingItem = (
+    label: string,
+    value: string,
+    onPress: () => void,
+    showArrow: boolean = true
+  ) => (
+    <TouchableOpacity
+      style={[styles.settingItem, { backgroundColor: colors.card }]}
+      onPress={onPress}
+    >
+      <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
+      <View style={styles.settingValueContainer}>
+        <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+          {value}
+        </Text>
+        {showArrow && (
+          <Text style={[styles.arrow, { color: colors.textSecondary }]}>
+            {isRTL ? "←" : "→"}
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderLanguageSelector = () => (
+    <View style={styles.selectorContainer}>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor:
+              language === "en" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setLanguage("en")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: language === "en" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.welcome.english}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor:
+              language === "ar" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setLanguage("ar")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: language === "ar" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.welcome.arabic}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderUnitsSelector = () => (
+    <View style={styles.selectorContainer}>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor: units === "km" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setUnits("km")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: units === "km" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.settings.kilometers}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor:
+              units === "miles" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setUnits("miles")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: units === "miles" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.settings.miles}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderThemeSelector = () => (
+    <View style={styles.selectorContainer}>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor:
+              theme === "light" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setTheme("light")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: theme === "light" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.settings.lightMode}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor: theme === "dark" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setTheme("dark")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: theme === "dark" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.settings.darkMode}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.selectorButton,
+          {
+            backgroundColor:
+              theme === "system" ? colors.primary : colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setTheme("system")}
+      >
+        <Text
+          style={[
+            styles.selectorButtonText,
+            {
+              color: theme === "system" ? colors.primaryLight : colors.text,
+            },
+          ]}
+        >
+          {t.settings.systemDefault}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {renderSection(t.settings.language, renderLanguageSelector())}
+
+        {renderSection(t.settings.units, renderUnitsSelector())}
+
+        {renderSection(t.settings.appearance, renderThemeSelector())}
+
+        {renderSection(
+          t.settings.permissions,
+          <View>
+            <View
+              style={[styles.permissionItem, { backgroundColor: colors.card }]}
+            >
+              <View style={styles.permissionInfo}>
+                <Text style={[styles.permissionLabel, { color: colors.text }]}>
+                  {t.settings.location}
+                </Text>
+                <Text
+                  style={[
+                    styles.permissionStatus,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {getPermissionStatusText(locationStatus)}
+                </Text>
+              </View>
+              {locationStatus !== "granted" && (
+                <TouchableOpacity
+                  style={[
+                    styles.permissionButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  onPress={requestLocationPermission}
+                >
+                  <Text
+                    style={[
+                      styles.permissionButtonText,
+                      { color: colors.primaryLight },
+                    ]}
+                  >
+                    {t.settings.requestPermission}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View
+              style={[
+                styles.permissionItem,
+                { backgroundColor: colors.card, marginTop: 12 },
+              ]}
+            >
+              <View style={styles.permissionInfo}>
+                <Text style={[styles.permissionLabel, { color: colors.text }]}>
+                  {t.settings.notifications}
+                </Text>
+                <Text
+                  style={[
+                    styles.permissionStatus,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {getPermissionStatusText(notificationStatus)}
+                </Text>
+              </View>
+              {notificationStatus !== "granted" && (
+                <TouchableOpacity
+                  style={[
+                    styles.permissionButton,
+                    { backgroundColor: colors.primary },
+                  ]}
+                  onPress={requestNotificationPermission}
+                >
+                  <Text
+                    style={[
+                      styles.permissionButtonText,
+                      { color: colors.primaryLight },
+                    ]}
+                  >
+                    {t.settings.requestPermission}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {renderSection(
+          t.settings.legal,
+          <View>
+            {renderSettingItem(t.settings.about, "", () =>
+              router.push("/(protected)/(tabs)/profile/(settings)/about")
+            )}
+            {renderSettingItem(t.settings.termsOfService, "", () =>
+              router.push("/(protected)/(tabs)/profile/(settings)/terms")
+            )}
+            {renderSettingItem(
+              t.settings.privacyPolicy,
+              "",
+              () =>
+                router.push("/(protected)/(tabs)/profile/(settings)/privacy"),
+              true
+            )}
+          </View>,
+          true
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+export default SettingsScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  divider: {
+    height: 1,
+    marginTop: 20,
+  },
+  settingItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  settingValueContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  settingValue: {
+    fontSize: 14,
+  },
+  arrow: {
+    fontSize: 16,
+  },
+  selectorContainer: {
+    flexDirection: "row",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  selectorButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: 100,
+    alignItems: "center",
+  },
+  selectorButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  permissionItem: {
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  permissionInfo: {
+    flex: 1,
+  },
+  permissionLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  permissionStatus: {
+    fontSize: 14,
+  },
+  permissionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  permissionButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});
