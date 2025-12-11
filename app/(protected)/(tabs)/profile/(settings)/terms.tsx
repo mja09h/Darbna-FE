@@ -1,21 +1,45 @@
-import { StyleSheet, Text, View, ScrollView } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 import React from "react";
+import { useRouter } from "expo-router";
 import { useLanguage } from "../../../../../context/LanguageContext";
 import { useTheme } from "../../../../../context/ThemeContext";
 
 const TermsScreen = () => {
+  const router = useRouter();
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={[styles.backButtonText, { color: colors.primary }]}>
+            {isRTL ? "→" : "←"}
+          </Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {t.settings.termsOfService}
+        </Text>
+        <View style={styles.headerSpacer} />
+      </View>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={[styles.title, { color: colors.text }]}>
-          {t.settings.termsOfService}
-        </Text>
         <Text style={[styles.content, { color: colors.text }]}>
           Last updated: {new Date().toLocaleDateString()}
         </Text>
@@ -79,16 +103,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: 8,
+    minWidth: 40,
+  },
+  backButtonText: {
+    fontSize: 24,
+    fontWeight: "600",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "center",
+  },
+  headerSpacer: {
+    width: 40,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
