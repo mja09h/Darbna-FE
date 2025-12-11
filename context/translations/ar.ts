@@ -25,12 +25,13 @@ export const ar: TranslationKeys = {
         or: "أو",
         continueWithGoogle: "المتابعة مع جوجل",
         continueWithApple: "المتابعة مع أبل",
+        loggingIn: "جاري تسجيل الدخول...",
 
         // Register
         register: "إنشاء حساب",
         createAccount: "إنشاء حساب",
         joinUsToday: "انضم إلينا اليوم",
-        name: "الاسم",
+        name: "الاسم الكامل",
         username: "اسم المستخدم",
         email: "البريد الإلكتروني",
         confirmPassword: "تأكيد كلمة المرور",
@@ -38,12 +39,38 @@ export const ar: TranslationKeys = {
         searchCountry: "ابحث عن دولة...",
         noCountriesFound: "لم يتم العثور على دول",
         haveAccount: "لديك حساب بالفعل؟",
+        creatingAccount: "جاري إنشاء الحساب...",
 
         // Forgot Password
         forgotPasswordTitle: "نسيت كلمة المرور؟",
         forgotPasswordSubtitle: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
         sendResetLink: "إرسال رابط إعادة التعيين",
         backToLogin: "العودة لتسجيل الدخول",
+
+        // Validation errors
+        emailRequired: "البريد الإلكتروني أو اسم المستخدم مطلوب",
+        passwordRequired: "كلمة المرور مطلوبة",
+        nameRequired: "الاسم الكامل مطلوب",
+        nameTooShort: "يجب أن يكون الاسم حرفين على الأقل",
+        nameInvalid: "الاسم يمكن أن يحتوي على حروف ومسافات فقط",
+        usernameRequired: "اسم المستخدم مطلوب",
+        usernameTooShort: "يجب أن يكون اسم المستخدم 3 أحرف على الأقل",
+        usernameTooLong: "يجب أن يكون اسم المستخدم أقل من 20 حرفاً",
+        usernameInvalid: "اسم المستخدم يمكن أن يحتوي على حروف وأرقام وشرطات سفلية فقط",
+        usernameNoSpaces: "اسم المستخدم لا يمكن أن يحتوي على مسافات",
+        emailInvalid: "يرجى إدخال بريد إلكتروني صحيح",
+        passwordTooShort: "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+        passwordWeak: "يجب أن تحتوي كلمة المرور على حرف ورقم واحد على الأقل",
+        passwordsDoNotMatch: "كلمات المرور غير متطابقة",
+        countryRequired: "يرجى اختيار الدولة",
+        allFieldsRequired: "جميع الحقول مطلوبة",
+
+        // Error messages
+        invalidCredentials: "البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة",
+        userExists: "يوجد مستخدم بهذا البريد الإلكتروني أو اسم المستخدم",
+        loginFailed: "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
+        registerFailed: "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.",
+        networkError: "خطأ في الشبكة. يرجى التحقق من اتصالك.",
     },
 
     // Common
@@ -58,6 +85,7 @@ export const ar: TranslationKeys = {
         loading: "جاري التحميل...",
         error: "خطأ",
         success: "نجاح",
+        tryAgain: "حاول مرة أخرى",
     },
 
     // Tabs
@@ -68,4 +96,3 @@ export const ar: TranslationKeys = {
         profile: "الملف الشخصي",
     },
 };
-
