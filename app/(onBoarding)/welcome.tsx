@@ -2,13 +2,13 @@ import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
 import React from "react";
 import { useRouter } from "expo-router";
 import { useLanguage } from "../../context/LanguageContext";
-// testing commit
+
 const Welcome = () => {
   const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
 
   const handleGetStarted = () => {
-    router.push("/(onBoarding)/getStarted");
+    router.push("/(auth)/login");
   };
 
   return (
