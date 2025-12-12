@@ -12,6 +12,7 @@ import { useTheme } from "../../../../../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 
 const PrivacyScreen = () => {
+  const router = useRouter();
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
   const router = useRouter();
@@ -40,9 +41,6 @@ const PrivacyScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={[styles.title, { color: colors.text }]}>
-          {t.settings.privacyPolicy}
-        </Text>
         <Text style={[styles.content, { color: colors.text }]}>
           Last updated: {new Date().toLocaleDateString()}
         </Text>
@@ -150,16 +148,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: 8,
+    minWidth: 40,
+  },
+  backButtonText: {
+    fontSize: 24,
+    fontWeight: "600",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "center",
+  },
+  headerSpacer: {
+    width: 40,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20,
