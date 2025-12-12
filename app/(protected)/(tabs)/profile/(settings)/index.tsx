@@ -4,20 +4,26 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useLanguage } from "../../../../../context/LanguageContext";
 import { useTheme } from "../../../../../context/ThemeContext";
 import { useSettings } from "../../../../../context/SettingsContext";
+import { useAuth } from "../../../../../context/AuthContext";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import { Ionicons } from "@expo/vector-icons";
+import CustomAlert, {
+  AlertButton,
+} from "../../../../../components/CustomAlert";
 
 const SettingsScreen = () => {
   const { language, setLanguage, t, isRTL } = useLanguage();
   const { theme, setTheme, colors, isDark } = useTheme();
   const { units, setUnits } = useSettings();
+  const { logout } = useAuth();
   const router = useRouter();
 
   const [locationStatus, setLocationStatus] =
@@ -25,12 +31,32 @@ const SettingsScreen = () => {
   const [notificationStatus, setNotificationStatus] =
     useState<Notifications.PermissionStatus | null>(null);
 
+  // Alert State
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: AlertButton[];
+    type?: "success" | "error" | "warning" | "info";
+  }>({ title: "", message: "" });
+
+  const version = Constants.expoConfig?.version ?? "1.0.0";
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "warning" | "info" = "info",
+    buttons?: AlertButton[]
+  ) => {
+    setAlertConfig({ title, message, type, buttons });
+    setAlertVisible(true);
+  };
+
   useEffect(() => {
     checkPermissions();
   }, []);
 
   const checkPermissions = async () => {
-    // Check location permission
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
       setLocationStatus(status);
@@ -38,7 +64,6 @@ const SettingsScreen = () => {
       console.log("Error checking location permission:", error);
     }
 
-    // Check notification permission
     try {
       const { status } = await Notifications.getPermissionsAsync();
       setNotificationStatus(status);
@@ -52,9 +77,10 @@ const SettingsScreen = () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setLocationStatus(status);
       if (status !== "granted") {
-        Alert.alert(
+        showAlert(
           t.common.error,
-          "Location permission is required for this feature."
+          "Location permission is required for this feature.",
+          "error"
         );
       }
     } catch (error) {
@@ -67,14 +93,40 @@ const SettingsScreen = () => {
       const { status } = await Notifications.requestPermissionsAsync();
       setNotificationStatus(status);
       if (status !== "granted") {
-        Alert.alert(
+        showAlert(
           t.common.error,
-          "Notification permission is required for this feature."
+          "Notification permission is required for this feature.",
+          "error"
         );
       }
     } catch (error) {
       console.log("Error requesting notification permission:", error);
     }
+  };
+
+  const handleLogout = () => {
+    showAlert(t.profile.logout, t.profile.logoutConfirm, "warning", [
+      {
+        text: t.common.cancel,
+        style: "cancel",
+      },
+      {
+        text: t.profile.logout,
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await logout();
+          } catch (error) {
+            console.error("Logout error:", error);
+            showAlert(
+              t.common.error,
+              "Failed to logout. Please try again.",
+              "error"
+            );
+          }
+        },
+      },
+    ]);
   };
 
   const getPermissionStatusText = (status: string | null) => {
@@ -116,9 +168,11 @@ const SettingsScreen = () => {
           {value}
         </Text>
         {showArrow && (
-          <Text style={[styles.arrow, { color: colors.textSecondary }]}>
-            {isRTL ? "←" : "→"}
-          </Text>
+          <Ionicons
+            name={isRTL ? "chevron-back" : "chevron-forward"}
+            size={20}
+            color={colors.textSecondary}
+          />
         )}
       </View>
     </TouchableOpacity>
@@ -293,10 +347,46 @@ const SettingsScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <Ionicons
+            name={isRTL ? "arrow-forward" : "arrow-back"}
+            size={24}
+            color={colors.text}
+          />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {t.settings.title}
+        </Text>
+        <View style={{ width: 24 }} />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        {renderSection(
+          t.profile.account,
+          <View>
+            {renderSettingItem(t.profile.accountInfo, "", () =>
+              router.push("/(protected)/(tabs)/profile/(account)")
+            )}
+            <TouchableOpacity
+              style={[styles.settingItem, { backgroundColor: colors.card }]}
+              onPress={handleLogout}
+            >
+              <Text style={[styles.settingLabel, { color: "#FF3B30" }]}>
+                {t.profile.logout}
+              </Text>
+              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {renderSection(t.settings.language, renderLanguageSelector())}
 
         {renderSection(t.settings.units, renderUnitsSelector())}
@@ -402,7 +492,22 @@ const SettingsScreen = () => {
           </View>,
           true
         )}
+
+        <View style={styles.versionContainer}>
+          <Text style={[styles.versionText, { color: colors.textSecondary }]}>
+            v{version}
+          </Text>
+        </View>
       </ScrollView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        buttons={alertConfig.buttons}
+        onDismiss={() => setAlertVisible(false)}
+      />
     </View>
   );
 };
@@ -412,16 +517,32 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 50,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: 5,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   section: {
     marginBottom: 32,
-    marginTop: 10,
   },
   sectionTitle: {
     fontSize: 14,
@@ -455,9 +576,6 @@ const styles = StyleSheet.create({
   settingValue: {
     fontSize: 14,
   },
-  arrow: {
-    fontSize: 16,
-  },
   selectorContainer: {
     flexDirection: "row",
     gap: 12,
@@ -468,12 +586,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     borderWidth: 1,
-    minWidth: 100,
+    minWidth: 90,
     alignItems: "center",
+    flex: 1,
   },
   selectorButtonText: {
     fontSize: 14,
     fontWeight: "600",
+    textAlign: "center",
   },
   permissionItem: {
     padding: 16,
@@ -502,5 +622,28 @@ const styles = StyleSheet.create({
   permissionButtonText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: "#FFE5E5",
+    gap: 8,
+  },
+  logoutText: {
+    color: "#FF3B30",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  versionContainer: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  versionText: {
+    fontSize: 14,
   },
 });
