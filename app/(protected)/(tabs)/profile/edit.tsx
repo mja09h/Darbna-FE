@@ -10,7 +10,6 @@ import {
   FlatList,
   SafeAreaView,
   Image,
-  Alert,
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
@@ -24,15 +23,18 @@ import CustomAlert, { AlertButton } from "../../../../components/CustomAlert";
 import * as ImagePicker from "expo-image-picker";
 
 const EditProfile = () => {
+  // --- Hooks ---
   const router = useRouter();
   const { t, isRTL, language } = useLanguage();
   const { colors } = useTheme();
   const { user, updateUserState } = useAuth();
 
+  // --- Data ---
   // Get localized countries list
   const countries = getCountries(language as "en" | "ar");
 
-  // Local state for form fields
+  // --- Local State ---
+  // Form fields
   const [name, setName] = useState(user?.name || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [phone, setPhone] = useState(user?.phone || "");
@@ -56,6 +58,7 @@ const EditProfile = () => {
     type?: "success" | "error" | "warning" | "info";
   }>({ title: "", message: "" });
 
+  // --- Helpers ---
   const showAlert = (
     title: string,
     message: string,
@@ -70,6 +73,7 @@ const EditProfile = () => {
     c.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // --- Handlers ---
   const pickImage = async () => {
     // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -150,6 +154,7 @@ const EditProfile = () => {
     </TouchableOpacity>
   );
 
+  // --- Render ---
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}

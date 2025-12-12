@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   // TODO: DEV MODE - Set to true to bypass auth protection
-  const DEV_BYPASS_AUTH = true;
+  const DEV_BYPASS_AUTH = false;
 
   // Handle routing based on auth status
   useEffect(() => {

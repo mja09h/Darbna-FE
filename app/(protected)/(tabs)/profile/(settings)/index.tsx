@@ -20,18 +20,20 @@ import CustomAlert, {
 } from "../../../../../components/CustomAlert";
 
 const SettingsScreen = () => {
+  // --- Hooks ---
   const { language, setLanguage, t, isRTL } = useLanguage();
   const { theme, setTheme, colors, isDark } = useTheme();
   const { units, setUnits } = useSettings();
   const { logout } = useAuth();
   const router = useRouter();
 
+  // --- Local State ---
   const [locationStatus, setLocationStatus] =
     useState<Location.PermissionStatus | null>(null);
   const [notificationStatus, setNotificationStatus] =
     useState<Notifications.PermissionStatus | null>(null);
 
-  // Alert State
+  // --- Alert State ---
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
@@ -40,8 +42,10 @@ const SettingsScreen = () => {
     type?: "success" | "error" | "warning" | "info";
   }>({ title: "", message: "" });
 
+  // --- Constants ---
   const version = Constants.expoConfig?.version ?? "1.0.0";
 
+  // --- Helper Functions ---
   const showAlert = (
     title: string,
     message: string,
@@ -72,6 +76,14 @@ const SettingsScreen = () => {
     }
   };
 
+  const getPermissionStatusText = (status: string | null) => {
+    if (!status) return t.settings.permissionNotDetermined;
+    if (status === "granted") return t.settings.permissionGranted;
+    if (status === "denied") return t.settings.permissionDenied;
+    return t.settings.permissionNotDetermined;
+  };
+
+  // --- Handlers ---
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -129,13 +141,7 @@ const SettingsScreen = () => {
     ]);
   };
 
-  const getPermissionStatusText = (status: string | null) => {
-    if (!status) return t.settings.permissionNotDetermined;
-    if (status === "granted") return t.settings.permissionGranted;
-    if (status === "denied") return t.settings.permissionDenied;
-    return t.settings.permissionNotDetermined;
-  };
-
+  // --- Render Helpers ---
   const renderSection = (
     title: string,
     children: React.ReactNode,
@@ -345,6 +351,7 @@ const SettingsScreen = () => {
     </View>
   );
 
+  // --- Render ---
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
