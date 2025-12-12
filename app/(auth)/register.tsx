@@ -3,14 +3,13 @@ import {
   Text,
   TouchableOpacity,
   View,
-  TextInput,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Modal,
   FlatList,
-  ActivityIndicator,
+  TextInput,
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
@@ -21,8 +20,14 @@ import { getCountries } from "../../data/Countries";
 import Toast, { ToastType } from "../../components/Toast";
 import axios from "axios";
 import { useGoogleAuth } from "../../hooks/useGoogleAuth";
-import { useAppleAuth, AppleUser } from "../../hooks/useAppleAuth";
+import { useAppleAuth } from "../../hooks/useAppleAuth";
 
+// --- Components ---
+import AuthInput from "../../components/AuthInput";
+import AuthButton from "../../components/AuthButton";
+import SocialButton from "../../components/SocialButton";
+
+// --- Types ---
 interface FormErrors {
   name?: string;
   username?: string;
@@ -33,10 +38,12 @@ interface FormErrors {
 }
 
 const Register = () => {
+  // --- Hooks ---
   const router = useRouter();
   const { t, language } = useLanguage();
   const { register, googleLogin, appleLogin, isLoading } = useAuth();
 
+  // --- Local State ---
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -52,7 +59,7 @@ const Register = () => {
     null
   );
 
-  // Toast state
+  // --- Toast State ---
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("error");
@@ -63,7 +70,9 @@ const Register = () => {
     setToastVisible(true);
   };
 
-  // Google Auth
+  // --- OAuth Handlers ---
+
+  // Google Authentication
   const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
     onSuccess: async (idToken) => {
       setOauthLoading("google");
@@ -80,7 +89,7 @@ const Register = () => {
     },
   });
 
-  // Apple Auth
+  // Apple Authentication
   const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
     onSuccess: async (identityToken, user) => {
       setOauthLoading("apple");
@@ -101,12 +110,13 @@ const Register = () => {
     },
   });
 
+  // --- Data & Helpers ---
   const countries = getCountries(language);
   const filteredCountries = countries.filter((country) =>
     country.toLowerCase().includes(countrySearch.toLowerCase())
   );
 
-  // Validation helpers
+  // --- Validation Helpers ---
   const isValidEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -249,6 +259,8 @@ const Register = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // --- Event Handlers ---
+
   const handleSelectCountry = (country: string) => {
     setSelectedCountry(country);
     setCountryModalVisible(false);
@@ -335,6 +347,7 @@ const Register = () => {
     }
   };
 
+  // --- Render ---
   return (
     <View style={styles.wrapper}>
       <Toast
@@ -353,6 +366,7 @@ const Register = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Logo Section */}
           <Image
             source={require("../../assets/darbna-logo.png")}
             style={styles.logo}
@@ -361,155 +375,98 @@ const Register = () => {
           <Text style={styles.title}>{t.auth.createAccount}</Text>
           <Text style={styles.subtitle}>{t.auth.joinUsToday}</Text>
 
+          {/* Form Section */}
           <View style={styles.formContainer}>
             {/* Name Input */}
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={[styles.input, errors.name && styles.inputError]}
-                placeholder={t.auth.name}
-                placeholderTextColor="#a89080"
-                value={name}
-                onChangeText={handleNameChange}
-                onBlur={() => {
-                  if (name) {
-                    const error = validateName(name);
-                    setErrors((prev) => ({ ...prev, name: error }));
-                  }
-                }}
-                editable={!isLoading}
-              />
-              {errors.name && (
-                <Text style={styles.errorText}>{errors.name}</Text>
-              )}
-            </View>
+            <AuthInput
+              placeholder={t.auth.name}
+              value={name}
+              onChangeText={handleNameChange}
+              onBlur={() => {
+                if (name) {
+                  const error = validateName(name);
+                  setErrors((prev) => ({ ...prev, name: error }));
+                }
+              }}
+              error={errors.name}
+              isLoading={isLoading}
+            />
 
             {/* Username Input */}
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={[styles.input, errors.username && styles.inputError]}
-                placeholder={t.auth.username}
-                placeholderTextColor="#a89080"
-                autoCapitalize="none"
-                autoCorrect={false}
-                value={username}
-                onChangeText={handleUsernameChange}
-                onBlur={() => {
-                  if (username) {
-                    const error = validateUsername(username);
-                    setErrors((prev) => ({ ...prev, username: error }));
-                  }
-                }}
-                editable={!isLoading}
-              />
-              {errors.username && (
-                <Text style={styles.errorText}>{errors.username}</Text>
-              )}
-            </View>
+            <AuthInput
+              placeholder={t.auth.username}
+              value={username}
+              onChangeText={handleUsernameChange}
+              onBlur={() => {
+                if (username) {
+                  const error = validateUsername(username);
+                  setErrors((prev) => ({ ...prev, username: error }));
+                }
+              }}
+              error={errors.username}
+              isLoading={isLoading}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
             {/* Email Input */}
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
-                placeholder={t.auth.email}
-                placeholderTextColor="#a89080"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                value={email}
-                onChangeText={handleEmailChange}
-                onBlur={() => {
-                  if (email) {
-                    const error = validateEmail(email);
-                    setErrors((prev) => ({ ...prev, email: error }));
-                  }
-                }}
-                editable={!isLoading}
-              />
-              {errors.email && (
-                <Text style={styles.errorText}>{errors.email}</Text>
-              )}
-            </View>
+            <AuthInput
+              placeholder={t.auth.email}
+              value={email}
+              onChangeText={handleEmailChange}
+              onBlur={() => {
+                if (email) {
+                  const error = validateEmail(email);
+                  setErrors((prev) => ({ ...prev, email: error }));
+                }
+              }}
+              error={errors.email}
+              isLoading={isLoading}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+            />
 
             {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.passwordInput,
-                    errors.password && styles.inputError,
-                  ]}
-                  placeholder={t.auth.password}
-                  placeholderTextColor="#a89080"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={handlePasswordChange}
-                  onBlur={() => {
-                    if (password) {
-                      const error = validatePassword(password);
-                      setErrors((prev) => ({ ...prev, password: error }));
-                    }
-                  }}
-                  editable={!isLoading}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off" : "eye"}
-                    size={22}
-                    color="#a89080"
-                  />
-                </TouchableOpacity>
-              </View>
-              {errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              )}
-            </View>
+            <AuthInput
+              placeholder={t.auth.password}
+              value={password}
+              onChangeText={handlePasswordChange}
+              onBlur={() => {
+                if (password) {
+                  const error = validatePassword(password);
+                  setErrors((prev) => ({ ...prev, password: error }));
+                }
+              }}
+              error={errors.password}
+              isLoading={isLoading}
+              isPassword
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+            />
 
             {/* Confirm Password Input */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.passwordInput,
-                    errors.confirmPassword && styles.inputError,
-                  ]}
-                  placeholder={t.auth.confirmPassword}
-                  placeholderTextColor="#a89080"
-                  secureTextEntry={!showConfirmPassword}
-                  value={confirmPassword}
-                  onChangeText={handleConfirmPasswordChange}
-                  onBlur={() => {
-                    if (confirmPassword) {
-                      const error = validateConfirmPassword(confirmPassword);
-                      setErrors((prev) => ({
-                        ...prev,
-                        confirmPassword: error,
-                      }));
-                    }
-                  }}
-                  editable={!isLoading}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={isLoading}
-                >
-                  <Ionicons
-                    name={showConfirmPassword ? "eye-off" : "eye"}
-                    size={22}
-                    color="#a89080"
-                  />
-                </TouchableOpacity>
-              </View>
-              {errors.confirmPassword && (
-                <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-              )}
-            </View>
+            <AuthInput
+              placeholder={t.auth.confirmPassword}
+              value={confirmPassword}
+              onChangeText={handleConfirmPasswordChange}
+              onBlur={() => {
+                if (confirmPassword) {
+                  const error = validateConfirmPassword(confirmPassword);
+                  setErrors((prev) => ({
+                    ...prev,
+                    confirmPassword: error,
+                  }));
+                }
+              }}
+              error={errors.confirmPassword}
+              isLoading={isLoading}
+              isPassword
+              showPassword={showConfirmPassword}
+              onTogglePassword={() =>
+                setShowConfirmPassword(!showConfirmPassword)
+              }
+            />
 
             {/* Country Selector */}
             <View style={styles.inputWrapper}>
@@ -536,73 +493,47 @@ const Register = () => {
               )}
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.registerButton,
-                isLoading && styles.registerButtonDisabled,
-              ]}
+            {/* Register Button */}
+            <AuthButton
+              title={t.auth.signUp}
+              loadingTitle={t.auth.creatingAccount}
               onPress={handleRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#2c120c" />
-                  <Text style={styles.registerButtonText}>
-                    {t.auth.creatingAccount}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.registerButtonText}>{t.auth.signUp}</Text>
-              )}
-            </TouchableOpacity>
+              isLoading={isLoading}
+              style={{ marginTop: 10 }}
+            />
           </View>
 
+          {/* Divider */}
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
             <Text style={styles.dividerText}>{t.auth.or}</Text>
             <View style={styles.divider} />
           </View>
 
+          {/* Social Login Buttons */}
           <View style={styles.socialButtonsColumn}>
-            <TouchableOpacity
-              style={[
-                styles.socialButton,
-                (!isGoogleReady || isLoading || oauthLoading) &&
-                  styles.socialButtonDisabled,
-              ]}
-              disabled={!isGoogleReady || isLoading || !!oauthLoading}
+            {/* Google Login */}
+            <SocialButton
+              title={t.auth.continueWithGoogle}
+              iconName="logo-google"
               onPress={signInWithGoogle}
-            >
-              {oauthLoading === "google" ? (
-                <ActivityIndicator size="small" color="#f5e6d3" />
-              ) : (
-                <Ionicons name="logo-google" size={20} color="#f5e6d3" />
-              )}
-              <Text style={styles.socialButtonText}>
-                {t.auth.continueWithGoogle}
-              </Text>
-            </TouchableOpacity>
+              isLoading={oauthLoading === "google"}
+              disabled={!isGoogleReady || isLoading || !!oauthLoading}
+            />
+
+            {/* Apple Login */}
             {Platform.OS === "ios" && isAppleAvailable && (
-              <TouchableOpacity
-                style={[
-                  styles.socialButton,
-                  (isLoading || oauthLoading) && styles.socialButtonDisabled,
-                ]}
-                disabled={isLoading || !!oauthLoading}
+              <SocialButton
+                title={t.auth.continueWithApple}
+                iconName="logo-apple"
                 onPress={signInWithApple}
-              >
-                {oauthLoading === "apple" ? (
-                  <ActivityIndicator size="small" color="#f5e6d3" />
-                ) : (
-                  <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
-                )}
-                <Text style={styles.socialButtonText}>
-                  {t.auth.continueWithApple}
-                </Text>
-              </TouchableOpacity>
+                isLoading={oauthLoading === "apple"}
+                disabled={isLoading || !!oauthLoading}
+              />
             )}
           </View>
 
+          {/* Login Link */}
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>{t.auth.haveAccount}</Text>
             <TouchableOpacity
@@ -726,37 +657,14 @@ const styles = StyleSheet.create({
   inputWrapper: {
     marginBottom: 12,
   },
-  input: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: "#f5e6d3",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  inputError: {
-    borderColor: "#ff6b6b",
-  },
-  passwordContainer: {
-    position: "relative",
-  },
-  passwordInput: {
-    paddingRight: 50,
-  },
-  eyeButton: {
-    position: "absolute",
-    right: 16,
-    top: 0,
-    bottom: 0,
-    justifyContent: "center",
-  },
   errorText: {
     color: "#ff6b6b",
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
+  },
+  inputError: {
+    borderColor: "#ff6b6b",
   },
   countrySelector: {
     backgroundColor: "rgba(255, 255, 255, 0.08)",
@@ -775,31 +683,6 @@ const styles = StyleSheet.create({
   },
   countrySelectorPlaceholder: {
     color: "#a89080",
-  },
-  registerButton: {
-    backgroundColor: "#ad5410",
-    paddingVertical: 16,
-    borderRadius: 30,
-    alignItems: "center",
-    marginTop: 10,
-    shadowColor: "#ad5410",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  registerButtonDisabled: {
-    opacity: 0.7,
-  },
-  loadingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  registerButtonText: {
-    color: "#2c120c",
-    fontWeight: "bold",
-    fontSize: 18,
   },
   dividerContainer: {
     flexDirection: "row",
@@ -821,25 +704,6 @@ const styles = StyleSheet.create({
   socialButtonsColumn: {
     width: "100%",
     gap: 12,
-  },
-  socialButton: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
-    gap: 12,
-  },
-  socialButtonDisabled: {
-    opacity: 0.6,
-  },
-  socialButtonText: {
-    color: "#f5e6d3",
-    fontWeight: "600",
-    fontSize: 16,
   },
   loginContainer: {
     flexDirection: "row",
