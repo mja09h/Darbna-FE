@@ -11,6 +11,9 @@ import {
   login as apiLogin,
   register as apiRegister,
   logout as apiLogout,
+  googleAuth as apiGoogleAuth,
+  appleAuth as apiAppleAuth,
+  AppleAuthData,
 } from "../api/auth";
 import { getToken, removeToken } from "../api/storage";
 import { getCurrentUser } from "../api/user";
@@ -29,6 +32,8 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   updateUserState: (user: User) => void;
+  googleLogin: (idToken: string) => Promise<void>;
+  appleLogin: (data: AppleAuthData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -142,6 +147,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const googleLogin = async (idToken: string) => {
+    setIsLoading(true);
+    try {
+      const response: AuthResponse = await apiGoogleAuth(idToken);
+      setUser(response.user);
+      router.replace("/(protected)/(tabs)/home");
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const appleLogin = async (data: AppleAuthData) => {
+    setIsLoading(true);
+    try {
+      const response: AuthResponse = await apiAppleAuth(data);
+      setUser(response.user);
+      router.replace("/(protected)/(tabs)/home");
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const updateUserState = (updatedUser: User) => {
     setUser(updatedUser);
   };
@@ -156,6 +187,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         updateUserState,
+        googleLogin,
+        appleLogin,
       }}
     >
       {children}

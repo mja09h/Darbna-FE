@@ -20,6 +20,8 @@ import { useAuth } from "../../context/AuthContext";
 import { getCountries } from "../../data/Countries";
 import Toast, { ToastType } from "../../components/Toast";
 import axios from "axios";
+import { useGoogleAuth } from "../../hooks/useGoogleAuth";
+import { useAppleAuth, AppleUser } from "../../hooks/useAppleAuth";
 
 interface FormErrors {
   name?: string;
@@ -33,7 +35,7 @@ interface FormErrors {
 const Register = () => {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const { register, isLoading } = useAuth();
+  const { register, googleLogin, appleLogin, isLoading } = useAuth();
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -46,6 +48,9 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
+    null
+  );
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -57,6 +62,44 @@ const Register = () => {
     setToastType(type);
     setToastVisible(true);
   };
+
+  // Google Auth
+  const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
+    onSuccess: async (idToken) => {
+      setOauthLoading("google");
+      try {
+        await googleLogin(idToken);
+      } catch (error) {
+        showToast(t.auth.registerFailed, "error");
+      } finally {
+        setOauthLoading(null);
+      }
+    },
+    onError: (error) => {
+      showToast(error, "error");
+    },
+  });
+
+  // Apple Auth
+  const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
+    onSuccess: async (identityToken, user) => {
+      setOauthLoading("apple");
+      try {
+        await appleLogin({
+          identityToken,
+          email: user?.email,
+          fullName: user?.fullName,
+        });
+      } catch (error) {
+        showToast(t.auth.registerFailed, "error");
+      } finally {
+        setOauthLoading(null);
+      }
+    },
+    onError: (error) => {
+      showToast(error, "error");
+    },
+  });
 
   const countries = getCountries(language);
   const filteredCountries = countries.filter((country) =>
@@ -521,18 +564,43 @@ const Register = () => {
           </View>
 
           <View style={styles.socialButtonsColumn}>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-google" size={20} color="#f5e6d3" />
+            <TouchableOpacity
+              style={[
+                styles.socialButton,
+                (!isGoogleReady || isLoading || oauthLoading) &&
+                  styles.socialButtonDisabled,
+              ]}
+              disabled={!isGoogleReady || isLoading || !!oauthLoading}
+              onPress={signInWithGoogle}
+            >
+              {oauthLoading === "google" ? (
+                <ActivityIndicator size="small" color="#f5e6d3" />
+              ) : (
+                <Ionicons name="logo-google" size={20} color="#f5e6d3" />
+              )}
               <Text style={styles.socialButtonText}>
                 {t.auth.continueWithGoogle}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
-              <Text style={styles.socialButtonText}>
-                {t.auth.continueWithApple}
-              </Text>
-            </TouchableOpacity>
+            {Platform.OS === "ios" && isAppleAvailable && (
+              <TouchableOpacity
+                style={[
+                  styles.socialButton,
+                  (isLoading || oauthLoading) && styles.socialButtonDisabled,
+                ]}
+                disabled={isLoading || !!oauthLoading}
+                onPress={signInWithApple}
+              >
+                {oauthLoading === "apple" ? (
+                  <ActivityIndicator size="small" color="#f5e6d3" />
+                ) : (
+                  <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
+                )}
+                <Text style={styles.socialButtonText}>
+                  {t.auth.continueWithApple}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.loginContainer}>
@@ -764,6 +832,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "transparent",
     gap: 12,
+  },
+  socialButtonDisabled: {
+    opacity: 0.6,
   },
   socialButtonText: {
     color: "#f5e6d3",

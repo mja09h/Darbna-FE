@@ -2,6 +2,37 @@ import api from ".";
 import { removeToken, setToken } from "./storage";
 import { AuthResponse } from "../types/User";
 
+// Google OAuth
+const googleAuth = async (idToken: string): Promise<AuthResponse> => {
+    try {
+        const response = await api.post<AuthResponse>("/auth/google", { idToken });
+        await setToken(response.data.token);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Apple OAuth
+interface AppleAuthData {
+    identityToken: string;
+    email?: string | null;
+    fullName?: {
+        givenName: string | null;
+        familyName: string | null;
+    } | null;
+}
+
+const appleAuth = async (data: AppleAuthData): Promise<AuthResponse> => {
+    try {
+        const response = await api.post<AuthResponse>("/auth/apple", data);
+        await setToken(response.data.token);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};
+
 const login = async (identifier: string, password: string): Promise<AuthResponse> => {
     try {
         if (!identifier || !password) {
@@ -86,4 +117,8 @@ export {
     logout,
     forgotPassword,
     resetPassword,
+    googleAuth,
+    appleAuth,
 };
+
+export type { AppleAuthData };

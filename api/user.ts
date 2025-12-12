@@ -82,6 +82,15 @@ const deleteUser = async (id: string): Promise<void> => {
     }
 };
 
+// Update password
+const updatePassword = async (id: string, password: string): Promise<void> => {
+    try {
+        await api.put(`/users/${id}/password`, { password });
+    } catch (error) {
+        throw error;
+    }
+};
+
 // Follow user
 const followUser = async (targetUserId: string, currentUserId: string): Promise<User> => {
     try {
@@ -129,6 +138,7 @@ export {
     getUserByUsername,
     getUserProfile,
     updateUser,
+    updatePassword,
     deleteUser,
     followUser,
     unfollowUser,
