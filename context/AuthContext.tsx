@@ -63,9 +63,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkAuthStatus();
   }, []);
 
+  // TODO: DEV MODE - Set to true to bypass auth protection
+  const DEV_BYPASS_AUTH = true;
+
   // Handle routing based on auth status
   useEffect(() => {
     if (isLoading) return;
+
+    // DEV MODE: Skip auth redirects
+    if (DEV_BYPASS_AUTH) return;
 
     const inAuthGroup = segments[0] === "(auth)";
     const inProtectedGroup = segments[0] === "(protected)";

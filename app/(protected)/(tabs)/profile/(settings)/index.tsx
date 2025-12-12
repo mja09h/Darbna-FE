@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 32,
+    marginTop: 10,
   },
   sectionTitle: {
     fontSize: 14,

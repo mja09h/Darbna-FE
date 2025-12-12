@@ -49,43 +49,49 @@ const Login = () => {
     setToastVisible(true);
   };
 
-  // Google Auth
-  const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
-    onSuccess: async (idToken) => {
-      setOauthLoading("google");
-      try {
-        await googleLogin(idToken);
-      } catch (error) {
-        showToast(t.auth.loginFailed, "error");
-      } finally {
-        setOauthLoading(null);
-      }
-    },
-    onError: (error) => {
-      showToast(error, "error");
-    },
-  });
+  // TODO: DEV MODE - Bypass OAuth, using dummy handlers
+  const isGoogleReady = true;
+  const isAppleAvailable = true;
+  const signInWithGoogle = () => router.replace("/(protected)/(tabs)/home");
+  const signInWithApple = () => router.replace("/(protected)/(tabs)/home");
 
-  // Apple Auth
-  const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
-    onSuccess: async (identityToken, user) => {
-      setOauthLoading("apple");
-      try {
-        await appleLogin({
-          identityToken,
-          email: user?.email,
-          fullName: user?.fullName,
-        });
-      } catch (error) {
-        showToast(t.auth.loginFailed, "error");
-      } finally {
-        setOauthLoading(null);
-      }
-    },
-    onError: (error) => {
-      showToast(error, "error");
-    },
-  });
+  // ORIGINAL GOOGLE AUTH (commented out for dev)
+  // const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
+  //   onSuccess: async (idToken) => {
+  //     setOauthLoading("google");
+  //     try {
+  //       await googleLogin(idToken);
+  //     } catch (error) {
+  //       showToast(t.auth.loginFailed, "error");
+  //     } finally {
+  //       setOauthLoading(null);
+  //     }
+  //   },
+  //   onError: (error) => {
+  //     showToast(error, "error");
+  //   },
+  // });
+
+  // ORIGINAL APPLE AUTH (commented out for dev)
+  // const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
+  //   onSuccess: async (identityToken, user) => {
+  //     setOauthLoading("apple");
+  //     try {
+  //       await appleLogin({
+  //         identityToken,
+  //         email: user?.email,
+  //         fullName: user?.fullName,
+  //       });
+  //     } catch (error) {
+  //       showToast(t.auth.loginFailed, "error");
+  //     } finally {
+  //       setOauthLoading(null);
+  //     }
+  //   },
+  //   onError: (error) => {
+  //     showToast(error, "error");
+  //   },
+  // });
 
   // Validation helpers
   const isValidEmail = (email: string): boolean => {
@@ -140,25 +146,30 @@ const Login = () => {
   };
 
   const handleLogin = async () => {
-    if (!validateForm()) return;
+    // TODO: DEV MODE - Bypass login, go directly to home
+    router.replace("/(protected)/(tabs)/home");
+    return;
 
-    try {
-      await login(emailOrUsername.trim(), password);
-    } catch (error) {
-      let errorMessage = t.auth.loginFailed;
-
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401 || error.response?.status === 400) {
-          errorMessage = t.auth.invalidCredentials;
-        } else if (!error.response) {
-          errorMessage = t.auth.networkError;
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-      }
-
-      showToast(errorMessage, "error");
-    }
+    // ORIGINAL LOGIN LOGIC (commented out for dev)
+    // if (!validateForm()) return;
+    //
+    // try {
+    //   await login(emailOrUsername.trim(), password);
+    // } catch (error) {
+    //   let errorMessage = t.auth.loginFailed;
+    //
+    //   if (axios.isAxiosError(error)) {
+    //     if (error.response?.status === 401 || error.response?.status === 400) {
+    //       errorMessage = t.auth.invalidCredentials;
+    //     } else if (!error.response) {
+    //       errorMessage = t.auth.networkError;
+    //     } else if (error.response?.data?.message) {
+    //       errorMessage = error.response.data.message;
+    //     }
+    //   }
+    //
+    //   showToast(errorMessage, "error");
+    // }
   };
 
   const handleIdentifierChange = (text: string) => {
