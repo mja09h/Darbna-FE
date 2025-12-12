@@ -17,6 +17,8 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import Toast, { ToastType } from "../../components/Toast";
 import axios from "axios";
+import { useGoogleAuth } from "../../hooks/useGoogleAuth";
+import { useAppleAuth, AppleUser } from "../../hooks/useAppleAuth";
 
 interface FormErrors {
   identifier?: string;
@@ -26,12 +28,15 @@ interface FormErrors {
 const Login = () => {
   const router = useRouter();
   const { t } = useLanguage();
-  const { login, isLoading } = useAuth();
+  const { login, googleLogin, appleLogin, isLoading } = useAuth();
 
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
+    null
+  );
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -43,6 +48,50 @@ const Login = () => {
     setToastType(type);
     setToastVisible(true);
   };
+
+  // TODO: DEV MODE - Bypass OAuth, using dummy handlers
+  const isGoogleReady = true;
+  const isAppleAvailable = true;
+  const signInWithGoogle = () => router.replace("/(protected)/(tabs)/home");
+  const signInWithApple = () => router.replace("/(protected)/(tabs)/home");
+
+  // ORIGINAL GOOGLE AUTH (commented out for dev)
+  // const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
+  //   onSuccess: async (idToken) => {
+  //     setOauthLoading("google");
+  //     try {
+  //       await googleLogin(idToken);
+  //     } catch (error) {
+  //       showToast(t.auth.loginFailed, "error");
+  //     } finally {
+  //       setOauthLoading(null);
+  //     }
+  //   },
+  //   onError: (error) => {
+  //     showToast(error, "error");
+  //   },
+  // });
+
+  // ORIGINAL APPLE AUTH (commented out for dev)
+  // const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
+  //   onSuccess: async (identityToken, user) => {
+  //     setOauthLoading("apple");
+  //     try {
+  //       await appleLogin({
+  //         identityToken,
+  //         email: user?.email,
+  //         fullName: user?.fullName,
+  //       });
+  //     } catch (error) {
+  //       showToast(t.auth.loginFailed, "error");
+  //     } finally {
+  //       setOauthLoading(null);
+  //     }
+  //   },
+  //   onError: (error) => {
+  //     showToast(error, "error");
+  //   },
+  // });
 
   // Validation helpers
   const isValidEmail = (email: string): boolean => {
@@ -97,25 +146,30 @@ const Login = () => {
   };
 
   const handleLogin = async () => {
-    if (!validateForm()) return;
+    // TODO: DEV MODE - Bypass login, go directly to home
+    router.replace("/(protected)/(tabs)/home");
+    return;
 
-    try {
-      await login(emailOrUsername.trim(), password);
-    } catch (error) {
-      let errorMessage = t.auth.loginFailed;
-
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401 || error.response?.status === 400) {
-          errorMessage = t.auth.invalidCredentials;
-        } else if (!error.response) {
-          errorMessage = t.auth.networkError;
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
-        }
-      }
-
-      showToast(errorMessage, "error");
-    }
+    // ORIGINAL LOGIN LOGIC (commented out for dev)
+    // if (!validateForm()) return;
+    //
+    // try {
+    //   await login(emailOrUsername.trim(), password);
+    // } catch (error) {
+    //   let errorMessage = t.auth.loginFailed;
+    //
+    //   if (axios.isAxiosError(error)) {
+    //     if (error.response?.status === 401 || error.response?.status === 400) {
+    //       errorMessage = t.auth.invalidCredentials;
+    //     } else if (!error.response) {
+    //       errorMessage = t.auth.networkError;
+    //     } else if (error.response?.data?.message) {
+    //       errorMessage = error.response.data.message;
+    //     }
+    //   }
+    //
+    //   showToast(errorMessage, "error");
+    // }
   };
 
   const handleIdentifierChange = (text: string) => {
@@ -257,18 +311,43 @@ const Login = () => {
           </View>
 
           <View style={styles.socialButtonsColumn}>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-google" size={20} color="#f5e6d3" />
+            <TouchableOpacity
+              style={[
+                styles.socialButton,
+                (!isGoogleReady || isLoading || oauthLoading) &&
+                  styles.socialButtonDisabled,
+              ]}
+              disabled={!isGoogleReady || isLoading || !!oauthLoading}
+              onPress={signInWithGoogle}
+            >
+              {oauthLoading === "google" ? (
+                <ActivityIndicator size="small" color="#f5e6d3" />
+              ) : (
+                <Ionicons name="logo-google" size={20} color="#f5e6d3" />
+              )}
               <Text style={styles.socialButtonText}>
                 {t.auth.continueWithGoogle}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton} disabled={isLoading}>
-              <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
-              <Text style={styles.socialButtonText}>
-                {t.auth.continueWithApple}
-              </Text>
-            </TouchableOpacity>
+            {Platform.OS === "ios" && isAppleAvailable && (
+              <TouchableOpacity
+                style={[
+                  styles.socialButton,
+                  (isLoading || oauthLoading) && styles.socialButtonDisabled,
+                ]}
+                disabled={isLoading || !!oauthLoading}
+                onPress={signInWithApple}
+              >
+                {oauthLoading === "apple" ? (
+                  <ActivityIndicator size="small" color="#f5e6d3" />
+                ) : (
+                  <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
+                )}
+                <Text style={styles.socialButtonText}>
+                  {t.auth.continueWithApple}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.signUpContainer}>
@@ -423,6 +502,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "transparent",
     gap: 12,
+  },
+  socialButtonDisabled: {
+    opacity: 0.6,
   },
   socialButtonText: {
     color: "#f5e6d3",
