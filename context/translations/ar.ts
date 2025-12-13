@@ -25,6 +25,7 @@ export const ar: TranslationKeys = {
     or: "أو",
     continueWithGoogle: "المتابعة مع جوجل",
     continueWithApple: "المتابعة مع أبل",
+    loggingIn: "جاري تسجيل الدخول...",
 
     // Register
     register: "إنشاء حساب",

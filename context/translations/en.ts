@@ -23,6 +23,7 @@ export const en = {
     or: "or",
     continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
+    loggingIn: "Logging in...",
 
     // Register
     register: "Register",

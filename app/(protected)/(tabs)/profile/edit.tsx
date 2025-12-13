@@ -122,6 +122,8 @@ const EditProfile = () => {
 
       const updatedUser = await updateUser(user._id, updateData);
 
+      console.log("Updated user from API:", updatedUser);
+
       // Update local context
       updateUserState(updatedUser);
 

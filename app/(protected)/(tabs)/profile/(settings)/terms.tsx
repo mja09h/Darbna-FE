@@ -15,7 +15,6 @@ const TermsScreen = () => {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
-  const router = useRouter();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -120,27 +119,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    padding: 8,
-    minWidth: 40,
-  },
   backButtonText: {
     fontSize: 24,
     fontWeight: "600",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    flex: 1,
-    textAlign: "center",
   },
   headerSpacer: {
     width: 40,

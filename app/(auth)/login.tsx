@@ -21,6 +21,7 @@ import { useAppleAuth } from "../../hooks/useAppleAuth";
 import AuthInput from "../../components/AuthInput";
 import AuthButton from "../../components/AuthButton";
 import SocialButton from "../../components/SocialButton";
+import CustomAlert from "../../components/CustomAlert";
 
 // --- Types ---
 interface FormErrors {
@@ -47,6 +48,10 @@ const Login = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("error");
+
+  // --- Debug Alert State ---
+  const [debugVisible, setDebugVisible] = useState(false);
+  const [debugMessage, setDebugMessage] = useState("");
 
   const showToast = (message: string, type: ToastType = "error") => {
     setToastMessage(message);
@@ -154,10 +159,24 @@ const Login = () => {
 
     try {
       await login(emailOrUsername.trim(), password);
-    } catch (error) {
+    } catch (error: any) {
       let errorMessage = t.auth.loginFailed;
 
       if (axios.isAxiosError(error)) {
+        if (error.response?.status === 500) {
+          const debugInfo = {
+            url: error.config?.url,
+            method: error.config?.method,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            headers: error.response?.headers,
+          };
+          setDebugMessage(JSON.stringify(debugInfo, null, 2));
+          setDebugVisible(true);
+          return;
+        }
+
         if (error.response?.status === 401 || error.response?.status === 400) {
           errorMessage = t.auth.invalidCredentials;
         } else if (!error.response) {
@@ -165,6 +184,8 @@ const Login = () => {
         } else if (error.response?.data?.message) {
           errorMessage = error.response.data.message;
         }
+      } else if (error instanceof Error && error.message) {
+        errorMessage = error.message;
       }
 
       showToast(errorMessage, "error");
@@ -195,6 +216,23 @@ const Login = () => {
         message={toastMessage}
         type={toastType}
         onDismiss={() => setToastVisible(false)}
+      />
+
+      <CustomAlert
+        visible={debugVisible}
+        title="Server Error (500)"
+        message={debugMessage}
+        type="error"
+        scrollable
+        monospace
+        onDismiss={() => setDebugVisible(false)}
+        buttons={[
+          {
+            text: "Close",
+            style: "cancel",
+            onPress: () => setDebugVisible(false),
+          },
+        ]}
       />
 
       <KeyboardAvoidingView
