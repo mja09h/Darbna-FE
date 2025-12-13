@@ -11,7 +11,6 @@ export const ar: TranslationKeys = {
     getStarted: "ابدأ الآن",
   },
 
-
   // Auth Screens
   auth: {
     // Login
@@ -26,13 +25,12 @@ export const ar: TranslationKeys = {
     or: "أو",
     continueWithGoogle: "المتابعة مع جوجل",
     continueWithApple: "المتابعة مع أبل",
-    loggingIn: "جاري تسجيل الدخول...",
 
     // Register
     register: "إنشاء حساب",
     createAccount: "إنشاء حساب",
     joinUsToday: "انضم إلينا اليوم",
-    name: "الاسم الكامل",
+    name: "الاسم",
     username: "اسم المستخدم",
     email: "البريد الإلكتروني",
     confirmPassword: "تأكيد كلمة المرور",
@@ -74,6 +72,13 @@ export const ar: TranslationKeys = {
     networkError: "خطأ في الشبكة. يرجى التحقق من اتصالك.",
   },
 
+    // Forgot Password
+    forgotPasswordTitle: "نسيت كلمة المرور؟",
+    forgotPasswordSubtitle:
+      "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
+    sendResetLink: "إرسال رابط إعادة التعيين",
+    backToLogin: "العودة لتسجيل الدخول",
+  },
 
   // Common
   common: {
@@ -116,6 +121,11 @@ export const ar: TranslationKeys = {
     permissionDenied: "مرفوض",
     permissionNotDetermined: "غير محدد",
     requestPermission: "طلب الإذن",
+    openSettings: "فتح الإعدادات",
+    locationDescription: "السماح بالوصول إلى موقعك للعثور على الأماكن القريبة",
+    notificationDescription: "تلقي الإشعارات حول التحديثات والمعلومات المهمة",
+    permissionRequired: "الإذن مطلوب لهذه الميزة",
+    openSettingsMessage: "تم رفض الإذن. يرجى تفعيله في إعدادات الجهاز.",
     about: "حول",
     termsOfService: "شروط الخدمة",
     privacyPolicy: "سياسة الخصوصية",

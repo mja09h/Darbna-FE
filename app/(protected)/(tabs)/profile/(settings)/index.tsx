@@ -4,9 +4,12 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  AppState,
 } from "react-native";
-import React, { useState, useEffect } from "react";
-import { useRouter } from "expo-router";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import * as Linking from "expo-linking";
 import { useLanguage } from "../../../../../context/LanguageContext";
 import { useTheme } from "../../../../../context/ThemeContext";
 import { useSettings } from "../../../../../context/SettingsContext";
@@ -32,6 +35,8 @@ const SettingsScreen = () => {
     useState<Location.PermissionStatus | null>(null);
   const [notificationStatus, setNotificationStatus] =
     useState<Notifications.PermissionStatus | null>(null);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   // --- Alert State ---
   const [alertVisible, setAlertVisible] = useState(false);
@@ -58,21 +63,57 @@ const SettingsScreen = () => {
 
   useEffect(() => {
     checkPermissions();
+
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        // App has come to the foreground, refresh permissions
+        checkPermissions();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
-  const checkPermissions = async () => {
-    try {
-      const { status } = await Location.getForegroundPermissionsAsync();
-      setLocationStatus(status);
-    } catch (error) {
-      console.log("Error checking location permission:", error);
-    }
+  // Refresh permissions when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkPermissions();
+    }, [])
+  );
 
+  const checkPermissions = async () => {
+    setIsCheckingPermissions(true);
     try {
-      const { status } = await Notifications.getPermissionsAsync();
-      setNotificationStatus(status);
+      // Check location permission
+      const locationResponse = await Location.getForegroundPermissionsAsync();
+      setLocationStatus(locationResponse.status);
+
+      // Check notification permission
+      const notificationResponse = await Notifications.getPermissionsAsync();
+      setNotificationStatus(notificationResponse.status);
     } catch (error) {
-      console.log("Error checking notification permission:", error);
+      console.log("Error checking permissions:", error);
+    } finally {
+      setIsCheckingPermissions(false);
+    }
+  };
+
+  const openAppSettings = async () => {
+    try {
+      await Linking.openSettings();
+      // Permissions will be refreshed when app comes back to foreground
+    } catch (error) {
+      console.log("Error opening settings:", error);
+      Alert.alert(
+        t.common.error,
+        "Unable to open device settings. Please open settings manually."
+      );
     }
   };
 
@@ -88,15 +129,27 @@ const SettingsScreen = () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setLocationStatus(status);
-      if (status !== "granted") {
-        showAlert(
-          t.common.error,
-          "Location permission is required for this feature.",
-          "error"
+      if (status === "denied") {
+        Alert.alert(
+          t.settings.permissionRequired,
+          t.settings.openSettingsMessage,
+          [
+            { text: t.common.cancel, style: "cancel" },
+            {
+              text: t.settings.openSettings,
+              onPress: openAppSettings,
+            },
+          ]
         );
+      } else if (status !== "granted") {
+        Alert.alert(t.common.error, t.settings.permissionRequired);
       }
     } catch (error) {
       console.log("Error requesting location permission:", error);
+      Alert.alert(
+        t.common.error,
+        "Unable to request location permission. Please try again."
+      );
     }
   };
 
@@ -104,15 +157,27 @@ const SettingsScreen = () => {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
       setNotificationStatus(status);
-      if (status !== "granted") {
-        showAlert(
-          t.common.error,
-          "Notification permission is required for this feature.",
-          "error"
+      if (status === "denied") {
+        Alert.alert(
+          t.settings.permissionRequired,
+          t.settings.openSettingsMessage,
+          [
+            { text: t.common.cancel, style: "cancel" },
+            {
+              text: t.settings.openSettings,
+              onPress: openAppSettings,
+            },
+          ]
         );
+      } else if (status !== "granted") {
+        Alert.alert(t.common.error, t.settings.permissionRequired);
       }
     } catch (error) {
       console.log("Error requesting notification permission:", error);
+      Alert.alert(
+        t.common.error,
+        "Unable to request notification permission. Please try again."
+      );
     }
   };
 
@@ -141,7 +206,19 @@ const SettingsScreen = () => {
     ]);
   };
 
-  // --- Render Helpers ---
+  const getPermissionStatusColor = (status: string | null) => {
+    if (!status || status === "undetermined") return colors.textSecondary;
+    if (status === "granted") return "#4CAF50"; // Green
+    if (status === "denied") return "#FF9800"; // Orange
+    return colors.textSecondary;
+  };
+
+  const getPermissionIcon = (status: string | null) => {
+    if (status === "granted") return "✓";
+    if (status === "denied") return "⚠";
+    return "○";
+  };
+
   const renderSection = (
     title: string,
     children: React.ReactNode,
@@ -281,6 +358,74 @@ const SettingsScreen = () => {
     </View>
   );
 
+  const renderPermissionItem = (
+    label: string,
+    description: string,
+    status: string | null,
+    onRequest: () => void,
+    onOpenSettings?: () => void
+  ) => {
+    const statusColor = getPermissionStatusColor(status);
+    const statusIcon = getPermissionIcon(status);
+    const isGranted = status === "granted";
+    const isDenied = status === "denied";
+
+    return (
+      <View style={[styles.permissionItem, { backgroundColor: colors.card }]}>
+        <View style={styles.permissionInfo}>
+          <View style={styles.permissionHeader}>
+            <Text style={[styles.permissionLabel, { color: colors.text }]}>
+              {label}
+            </Text>
+            <View style={styles.permissionStatusContainer}>
+              <Text style={[styles.permissionIcon, { color: statusColor }]}>
+                {statusIcon}
+              </Text>
+              <Text style={[styles.permissionStatus, { color: statusColor }]}>
+                {getPermissionStatusText(status)}
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={[
+              styles.permissionDescription,
+              { color: colors.textSecondary },
+            ]}
+          >
+            {description}
+          </Text>
+        </View>
+        {!isGranted && (
+          <TouchableOpacity
+            style={[
+              styles.permissionButton,
+              {
+                backgroundColor: isDenied ? colors.surface : colors.primary,
+                borderWidth: isDenied ? 1 : 0,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={isDenied && onOpenSettings ? onOpenSettings : onRequest}
+            disabled={isCheckingPermissions}
+          >
+            <Text
+              style={[
+                styles.permissionButtonText,
+                {
+                  color: isDenied ? colors.text : colors.primaryLight,
+                },
+              ]}
+            >
+              {isDenied
+                ? t.settings.openSettings
+                : t.settings.requestPermission}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   const renderThemeSelector = () => (
     <View style={styles.selectorContainer}>
       <TouchableOpacity
@@ -403,78 +548,21 @@ const SettingsScreen = () => {
         {renderSection(
           t.settings.permissions,
           <View>
-            <View
-              style={[styles.permissionItem, { backgroundColor: colors.card }]}
-            >
-              <View style={styles.permissionInfo}>
-                <Text style={[styles.permissionLabel, { color: colors.text }]}>
-                  {t.settings.location}
-                </Text>
-                <Text
-                  style={[
-                    styles.permissionStatus,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {getPermissionStatusText(locationStatus)}
-                </Text>
-              </View>
-              {locationStatus !== "granted" && (
-                <TouchableOpacity
-                  style={[
-                    styles.permissionButton,
-                    { backgroundColor: colors.primary },
-                  ]}
-                  onPress={requestLocationPermission}
-                >
-                  <Text
-                    style={[
-                      styles.permissionButtonText,
-                      { color: colors.primaryLight },
-                    ]}
-                  >
-                    {t.settings.requestPermission}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            {renderPermissionItem(
+              t.settings.location,
+              t.settings.locationDescription,
+              locationStatus,
+              requestLocationPermission,
+              openAppSettings
+            )}
 
-            <View
-              style={[
-                styles.permissionItem,
-                { backgroundColor: colors.card, marginTop: 12 },
-              ]}
-            >
-              <View style={styles.permissionInfo}>
-                <Text style={[styles.permissionLabel, { color: colors.text }]}>
-                  {t.settings.notifications}
-                </Text>
-                <Text
-                  style={[
-                    styles.permissionStatus,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {getPermissionStatusText(notificationStatus)}
-                </Text>
-              </View>
-              {notificationStatus !== "granted" && (
-                <TouchableOpacity
-                  style={[
-                    styles.permissionButton,
-                    { backgroundColor: colors.primary },
-                  ]}
-                  onPress={requestNotificationPermission}
-                >
-                  <Text
-                    style={[
-                      styles.permissionButtonText,
-                      { color: colors.primaryLight },
-                    ]}
-                  >
-                    {t.settings.requestPermission}
-                  </Text>
-                </TouchableOpacity>
+            <View style={{ marginTop: 12 }}>
+              {renderPermissionItem(
+                t.settings.notifications,
+                t.settings.notificationDescription,
+                notificationStatus,
+                requestNotificationPermission,
+                openAppSettings
               )}
             </View>
           </View>
@@ -607,27 +695,50 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   permissionInfo: {
     flex: 1,
+    marginRight: 12,
+  },
+  permissionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
   },
   permissionLabel: {
     fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 4,
+    fontWeight: "600",
+    flex: 1,
+  },
+  permissionStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  permissionIcon: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
   permissionStatus: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+  permissionDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
   permissionButton: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
-    marginLeft: 12,
+    minWidth: 100,
+    alignItems: "center",
   },
   permissionButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   logoutButton: {

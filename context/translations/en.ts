@@ -9,7 +9,6 @@ export const en = {
     getStarted: "Get Started",
   },
 
-
   // Auth Screens
   auth: {
     // Login
@@ -24,13 +23,12 @@ export const en = {
     or: "or",
     continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
-    loggingIn: "Logging in...",
 
     // Register
     register: "Register",
     createAccount: "Create Account",
     joinUsToday: "Join us today",
-    name: "Full Name",
+    name: "Name",
     username: "Username",
     email: "Email",
     confirmPassword: "Confirm Password",
@@ -72,6 +70,13 @@ export const en = {
     networkError: "Network error. Please check your connection.",
   },
 
+    // Forgot Password
+    forgotPasswordTitle: "Forgot Password?",
+    forgotPasswordSubtitle:
+      "Enter your email and we'll send you a link to reset your password",
+    sendResetLink: "Send Reset Link",
+    backToLogin: "Back to Login",
+  },
 
   // Common
   common: {
@@ -114,6 +119,13 @@ export const en = {
     permissionDenied: "Denied",
     permissionNotDetermined: "Not Determined",
     requestPermission: "Request Permission",
+    openSettings: "Open Settings",
+    locationDescription: "Allow access to your location to find nearby places",
+    notificationDescription:
+      "Receive notifications about updates and important information",
+    permissionRequired: "Permission is required for this feature",
+    openSettingsMessage:
+      "Permission was denied. Please enable it in device settings.",
     about: "About",
     termsOfService: "Terms of Service",
     privacyPolicy: "Privacy Policy",
