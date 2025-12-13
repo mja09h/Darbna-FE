@@ -70,14 +70,6 @@ export const en = {
     networkError: "Network error. Please check your connection.",
   },
 
-    // Forgot Password
-    forgotPasswordTitle: "Forgot Password?",
-    forgotPasswordSubtitle:
-      "Enter your email and we'll send you a link to reset your password",
-    sendResetLink: "Send Reset Link",
-    backToLogin: "Back to Login",
-  },
-
   // Common
   common: {
     continue: "Continue",

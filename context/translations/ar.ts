@@ -72,14 +72,6 @@ export const ar: TranslationKeys = {
     networkError: "خطأ في الشبكة. يرجى التحقق من اتصالك.",
   },
 
-    // Forgot Password
-    forgotPasswordTitle: "نسيت كلمة المرور؟",
-    forgotPasswordSubtitle:
-      "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
-    sendResetLink: "إرسال رابط إعادة التعيين",
-    backToLogin: "العودة لتسجيل الدخول",
-  },
-
   // Common
   common: {
     continue: "متابعة",
