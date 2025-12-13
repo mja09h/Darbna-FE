@@ -3,7 +3,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  TextInput,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -11,102 +10,323 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
+import Toast, { ToastType } from "../../components/Toast";
+import axios from "axios";
+import { useGoogleAuth } from "../../hooks/useGoogleAuth";
+import { useAppleAuth } from "../../hooks/useAppleAuth";
+
+// --- Components ---
+import AuthInput from "../../components/AuthInput";
+import AuthButton from "../../components/AuthButton";
+import SocialButton from "../../components/SocialButton";
+
+// --- Types ---
+interface FormErrors {
+  identifier?: string;
+  password?: string;
+}
 
 const Login = () => {
+  // --- Hooks ---
   const router = useRouter();
   const { t } = useLanguage();
+  const { login, googleLogin, appleLogin, isLoading } = useAuth();
+
+  // --- Local State ---
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
+    null
+  );
 
+  // --- Toast State ---
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<ToastType>("error");
+
+  const showToast = (message: string, type: ToastType = "error") => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  // --- OAuth Handlers ---
+
+  // Google Authentication
+  const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
+    onSuccess: async (idToken) => {
+      setOauthLoading("google");
+      try {
+        await googleLogin(idToken);
+      } catch (error) {
+        showToast(t.auth.loginFailed, "error");
+      } finally {
+        setOauthLoading(null);
+      }
+    },
+    onError: (error) => {
+      showToast(error, "error");
+    },
+  });
+
+  // Apple Authentication
+  const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
+    onSuccess: async (identityToken, user) => {
+      setOauthLoading("apple");
+      try {
+        await appleLogin({
+          identityToken,
+          email: user?.email,
+          fullName: user?.fullName,
+        });
+      } catch (error) {
+        showToast(t.auth.loginFailed, "error");
+      } finally {
+        setOauthLoading(null);
+      }
+    },
+    onError: (error) => {
+      showToast(error, "error");
+    },
+  });
+
+  // --- Validation Helpers ---
+
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateIdentifier = (value: string): string | undefined => {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return t.auth.emailRequired;
+    }
+
+    // If it contains @, validate as email to give specific feedback
+    if (trimmed.includes("@")) {
+      if (!isValidEmail(trimmed)) {
+        return t.auth.emailInvalid;
+      }
+    }
+
+    return undefined;
+  };
+
+  const validatePassword = (value: string): string | undefined => {
+    if (!value) {
+      return t.auth.passwordRequired;
+    }
+
+    if (value.length < 6) {
+      return t.auth.passwordTooShort;
+    }
+
+    return undefined;
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    const identifierError = validateIdentifier(emailOrUsername);
+    if (identifierError) {
+      newErrors.identifier = identifierError;
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      newErrors.password = passwordError;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // --- Event Handlers ---
+
+  const handleLogin = async () => {
+    if (!validateForm()) return;
+
+    try {
+      await login(emailOrUsername.trim(), password);
+    } catch (error) {
+      let errorMessage = t.auth.loginFailed;
+
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401 || error.response?.status === 400) {
+          errorMessage = t.auth.invalidCredentials;
+        } else if (!error.response) {
+          errorMessage = t.auth.networkError;
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+      }
+
+      showToast(errorMessage, "error");
+    }
+  };
+
+  const handleIdentifierChange = (text: string) => {
+    setEmailOrUsername(text.trim());
+    if (errors.identifier) {
+      const error = validateIdentifier(text.trim());
+      setErrors((prev) => ({ ...prev, identifier: error }));
+    }
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (errors.password) {
+      const error = validatePassword(text);
+      setErrors((prev) => ({ ...prev, password: error }));
+    }
+  };
+
+  // --- Render ---
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.wrapper}>
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onDismiss={() => setToastVisible(false)}
+      />
+
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <Image
-          source={require("../../assets/darbna-logo.png")}
-          style={styles.logo}
-        />
-
-        <Text style={styles.title}>{t.auth.welcomeBack}</Text>
-        <Text style={styles.subtitle}>{t.auth.signInToContinue}</Text>
-
-        <View style={styles.formContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder={t.auth.emailOrUsername}
-            placeholderTextColor="#a89080"
-            autoCapitalize="none"
-            value={emailOrUsername}
-            onChangeText={(text) => setEmailOrUsername(text.trim())}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder={t.auth.password}
-            placeholderTextColor="#a89080"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo Section */}
+          <Image
+            source={require("../../assets/darbna-logo.png")}
+            style={styles.logo}
           />
 
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => router.push("/(auth)/forgotPassoword")}
-          >
-            <Text style={styles.forgotPasswordText}>
-              {t.auth.forgotPassword}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.title}>{t.auth.welcomeBack}</Text>
+          <Text style={styles.subtitle}>{t.auth.signInToContinue}</Text>
 
-          <TouchableOpacity style={styles.loginButton}>
-            <Text style={styles.loginButtonText}>{t.auth.login}</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Form Section */}
+          <View style={styles.formContainer}>
+            {/* Email/Username Input */}
+            <AuthInput
+              placeholder={t.auth.emailOrUsername}
+              value={emailOrUsername}
+              onChangeText={handleIdentifierChange}
+              onBlur={() => {
+                if (emailOrUsername) {
+                  const error = validateIdentifier(emailOrUsername);
+                  setErrors((prev) => ({ ...prev, identifier: error }));
+                }
+              }}
+              error={errors.identifier}
+              isLoading={isLoading}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-        <View style={styles.dividerContainer}>
-          <View style={styles.divider} />
-          <Text style={styles.dividerText}>{t.auth.or}</Text>
-          <View style={styles.divider} />
-        </View>
+            {/* Password Input */}
+            <AuthInput
+              placeholder={t.auth.password}
+              value={password}
+              onChangeText={handlePasswordChange}
+              onBlur={() => {
+                if (password) {
+                  const error = validatePassword(password);
+                  setErrors((prev) => ({ ...prev, password: error }));
+                }
+              }}
+              error={errors.password}
+              isLoading={isLoading}
+              isPassword
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+            />
 
-        <View style={styles.socialButtonsColumn}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="logo-google" size={20} color="#f5e6d3" />
-            <Text style={styles.socialButtonText}>
-              {t.auth.continueWithGoogle}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Ionicons name="logo-apple" size={20} color="#f5e6d3" />
-            <Text style={styles.socialButtonText}>
-              {t.auth.continueWithApple}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {/* Forgot Password Link */}
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={() => router.push("/(auth)/forgotPassoword")}
+              disabled={isLoading}
+            >
+              <Text style={styles.forgotPasswordText}>
+                {t.auth.forgotPassword}
+              </Text>
+            </TouchableOpacity>
 
-        <View style={styles.signUpContainer}>
-          <Text style={styles.signUpText}>{t.auth.noAccount}</Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-            <Text style={styles.signUpLink}>{t.auth.signUp}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            {/* Login Button */}
+            <AuthButton
+              title={t.auth.login}
+              loadingTitle={t.auth.loggingIn}
+              onPress={handleLogin}
+              isLoading={isLoading}
+            />
+          </View>
+
+          {/* Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>{t.auth.or}</Text>
+            <View style={styles.divider} />
+          </View>
+
+          {/* Social Login Buttons */}
+          <View style={styles.socialButtonsColumn}>
+            {/* Google Login */}
+            <SocialButton
+              title={t.auth.continueWithGoogle}
+              iconName="logo-google"
+              onPress={signInWithGoogle}
+              isLoading={oauthLoading === "google"}
+              disabled={!isGoogleReady || isLoading || !!oauthLoading}
+            />
+
+            {/* Apple Login */}
+            {Platform.OS === "ios" && isAppleAvailable && (
+              <SocialButton
+                title={t.auth.continueWithApple}
+                iconName="logo-apple"
+                onPress={signInWithApple}
+                isLoading={oauthLoading === "apple"}
+                disabled={isLoading || !!oauthLoading}
+              />
+            )}
+          </View>
+
+          {/* Sign Up Link */}
+          <View style={styles.signUpContainer}>
+            <Text style={styles.signUpText}>{t.auth.noAccount}</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/(auth)/register")}
+              disabled={isLoading}
+            >
+              <Text style={styles.signUpLink}>{t.auth.signUp}</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 export default Login;
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     flex: 1,
     backgroundColor: "#2c120c",
+  },
+  container: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
@@ -136,17 +356,6 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
   },
-  input: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    color: "#f5e6d3",
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
   forgotPassword: {
     alignSelf: "flex-end",
     marginBottom: 20,
@@ -155,22 +364,6 @@ const styles = StyleSheet.create({
     color: "#ad5410",
     fontSize: 14,
     fontWeight: "600",
-  },
-  loginButton: {
-    backgroundColor: "#ad5410",
-    paddingVertical: 16,
-    borderRadius: 30,
-    alignItems: "center",
-    shadowColor: "#ad5410",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  loginButtonText: {
-    color: "#2c120c",
-    fontWeight: "bold",
-    fontSize: 18,
   },
   dividerContainer: {
     flexDirection: "row",
@@ -192,22 +385,6 @@ const styles = StyleSheet.create({
   socialButtonsColumn: {
     width: "100%",
     gap: 12,
-  },
-  socialButton: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
-    gap: 12,
-  },
-  socialButtonText: {
-    color: "#f5e6d3",
-    fontWeight: "600",
-    fontSize: 16,
   },
   signUpContainer: {
     flexDirection: "row",

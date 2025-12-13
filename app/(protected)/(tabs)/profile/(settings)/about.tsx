@@ -9,6 +9,7 @@ import React from "react";
 import { useRouter } from "expo-router";
 import { useLanguage } from "../../../../../context/LanguageContext";
 import { useTheme } from "../../../../../context/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 
 const AboutScreen = () => {
   const router = useRouter();
@@ -17,25 +18,24 @@ const AboutScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          { backgroundColor: colors.surface, borderBottomColor: colors.border },
-        ]}
-      >
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={styles.backButton}
           onPress={() => router.back()}
+          style={styles.backButton}
         >
-          <Text style={[styles.backButtonText, { color: colors.primary }]}>
-            {isRTL ? "→" : "←"}
-          </Text>
+          <Ionicons
+            name={isRTL ? "arrow-forward" : "arrow-back"}
+            size={24}
+            color={colors.text}
+          />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           {t.settings.about}
         </Text>
-        <View style={styles.headerSpacer} />
+        <View style={{ width: 24 }} />
       </View>
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -73,28 +73,22 @@ export default AboutScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 50,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
   },
   backButton: {
-    padding: 8,
-    minWidth: 40,
-  },
-  backButtonText: {
-    fontSize: 24,
-    fontWeight: "600",
+    padding: 5,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "600",
-    flex: 1,
-    textAlign: "center",
+    fontWeight: "bold",
   },
   headerSpacer: {
     width: 40,

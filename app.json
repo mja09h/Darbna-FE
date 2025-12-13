@@ -4,7 +4,8 @@
     "slug": "Darbna-FE",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/darbna-logo-i.png",
+    "scheme": "darbna",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -13,21 +14,22 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.darbna.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/darbna-logo-i.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.darbna.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/darbna-logo-i.png"
     },
-    "plugins": [
-      "expo-router"
-    ]
+    "plugins": ["expo-router", "expo-web-browser", "expo-apple-authentication"]
   }
 }
