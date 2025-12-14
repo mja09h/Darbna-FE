@@ -15,6 +15,27 @@ import {
 import { getToken, removeToken } from "../api/storage";
 import { getCurrentUser } from "../api/user";
 
+// Development flag to bypass authentication for testing
+// Set to false to re-enable authentication
+const BYPASS_AUTH = true;
+
+// Mock user for testing when authentication is bypassed
+const MOCK_USER: User = {
+  _id: "test-user-id",
+  name: "Test User",
+  username: "testuser",
+  email: "test@example.com",
+  country: "Saudi Arabia",
+  bio: "Testing the app without authentication",
+  profilePicture: undefined,
+  coverPicture: undefined,
+  phone: undefined,
+  followers: [],
+  following: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -62,6 +83,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     if (isLoading) return;
 
+    // Skip redirects when authentication is bypassed
+    if (BYPASS_AUTH) return;
+
     const inAuthGroup = segments[0] === "(auth)";
     const inProtectedGroup = segments[0] === "(protected)";
     const inOnboardingGroup = segments[0] === "(onBoarding)";
@@ -76,6 +100,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, [isAuthenticated, segments, isLoading]);
 
   const checkAuthStatus = async () => {
+    // Bypass authentication for testing
+    if (BYPASS_AUTH) {
+      setUser(MOCK_USER);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const token = await getToken();
       if (token) {
