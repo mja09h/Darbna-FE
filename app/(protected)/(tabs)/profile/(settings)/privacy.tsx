@@ -147,13 +147,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-
- 
   backButtonText: {
     fontSize: 24,
     fontWeight: "600",
   },
-  
   headerSpacer: {
     width: 40,
   },

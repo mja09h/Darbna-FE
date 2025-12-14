@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Animated,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
@@ -24,6 +25,8 @@ interface CustomAlertProps {
   buttons?: AlertButton[];
   onDismiss: () => void;
   type?: "success" | "error" | "warning" | "info";
+  scrollable?: boolean;
+  monospace?: boolean;
 }
 
 const CustomAlert: React.FC<CustomAlertProps> = ({
@@ -33,6 +36,8 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
   buttons = [{ text: "OK", style: "default", onPress: () => {} }],
   onDismiss,
   type = "info",
+  scrollable = false,
+  monospace = false,
 }) => {
   const { colors } = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
@@ -113,9 +118,32 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
             </View>
 
             <Text style={[styles.title, { color: "#f5e6d3" }]}>{title}</Text>
-            <Text style={[styles.message, { color: "#a89080" }]}>
-              {message}
-            </Text>
+            {scrollable ? (
+              <ScrollView
+                style={styles.scrollContainer}
+                contentContainerStyle={styles.scrollContent}
+              >
+                <Text
+                  style={[
+                    styles.message,
+                    { color: "#a89080" },
+                    monospace && styles.monospace,
+                  ]}
+                >
+                  {message}
+                </Text>
+              </ScrollView>
+            ) : (
+              <Text
+                style={[
+                  styles.message,
+                  { color: "#a89080" },
+                  monospace && styles.monospace,
+                ]}
+              >
+                {message}
+              </Text>
+            )}
           </View>
 
           <View
@@ -224,6 +252,19 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 8,
+  },
+  scrollContainer: {
+    maxHeight: 300,
+    width: "100%",
+    marginTop: 8,
+  },
+  scrollContent: {
+    paddingHorizontal: 4,
+  },
+  monospace: {
+    fontFamily: "Courier",
+    fontSize: 12,
+    textAlign: "left",
   },
   message: {
     fontSize: 16,

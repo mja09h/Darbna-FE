@@ -96,11 +96,8 @@ const EditProfile = () => {
 
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
-      // Construct Data URI
-      const base64 = `data:${
-        result.assets[0].mimeType || "image/jpeg"
-      };base64,${result.assets[0].base64}`;
-      setBase64Image(base64);
+      // We'll pass the whole asset object to the API which will handle the FormData conversion
+      setBase64Image(result.assets[0] as any);
     }
   };
 
@@ -117,6 +114,9 @@ const EditProfile = () => {
       };
 
       if (base64Image) {
+        // base64Image state currently holds the image asset object if picked,
+        // or a string if it was base64 encoded previously.
+        // The API now expects the asset object for FormData upload.
         updateData.profilePicture = base64Image;
       }
 
