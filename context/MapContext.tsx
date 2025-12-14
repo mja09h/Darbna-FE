@@ -6,15 +6,26 @@ import React, {
   ReactNode,
 } from "react";
 import { io, Socket } from "socket.io-client";
-import api, { BASE_URL } from "../api/index";
+import axios from "axios";
+import Constants from "expo-constants";
 import { IMapContext, IMapState, ILocation } from "../types/map";
 
-// Extract base URL without /api for Socket.IO connection
-const getSocketUrl = () => {
-  // BASE_URL is like "http://192.168.1.1:8000/api" or "http://localhost:8000/api"
-  // Socket.IO needs just "http://192.168.1.1:8000" or "http://localhost:8000"
-  return BASE_URL.replace("/api", "");
+// Helper to get the correct base URL for development (same as api/index.ts)
+const getBaseUrl = () => {
+  const debuggerHost = Constants.expoConfig?.hostUri;
+  const localhost = debuggerHost?.split(":")[0];
+
+  if (localhost) {
+    // Running on physical device or emulator via Expo Go
+    return `http://${localhost}:8000/api`;
+  }
+
+  // Fallback for iOS Simulator or other cases
+  return "http://localhost:8000/api";
 };
+
+const BASE_URL = getBaseUrl();
+const MAP_API_URL = `${BASE_URL}/map`;
 
 const MapContext = createContext<IMapContext | undefined>(undefined);
 
@@ -32,10 +43,11 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
   // Function to fetch initial data from the backend
   const fetchInitialData = async () => {
     try {
+      console.log("🗺️ Fetching map data from:", MAP_API_URL);
       const [routesRes, poisRes, heatmapRes] = await Promise.all([
-        api.get("/map/routes"),
-        api.get("/map/pois"),
-        api.get("/map/heatmap"),
+        axios.get(`${MAP_API_URL}/routes`),
+        axios.get(`${MAP_API_URL}/pois`),
+        axios.get(`${MAP_API_URL}/heatmap`),
       ]);
       setState((prevState) => ({
         ...prevState,
@@ -43,8 +55,19 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
         pois: poisRes.data,
         heatmapData: heatmapRes.data,
       }));
-    } catch (error) {
-      console.error("Failed to fetch initial map data:", error);
+      console.log("✅ Map data fetched successfully");
+    } catch (error: any) {
+      if (error.response) {
+        console.warn("⚠️ Map API responded with error:", error.response.status);
+      } else if (error.request) {
+        console.warn(
+          "⚠️ No response from map API. Is the backend server running?",
+          MAP_API_URL
+        );
+      } else {
+        console.error("❌ Error setting up map data request:", error.message);
+      }
+      // Silently fail - app can still work without map data
     }
   };
 
@@ -58,8 +81,8 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
-    // Initialize Socket.IO connection
-    const socketUrl = getSocketUrl();
+    // Initialize Socket.IO connection (use base URL without /api)
+    const socketUrl = BASE_URL.replace("/api", "");
     const newSocket = io(socketUrl);
     setSocket(newSocket);
 
