@@ -4,10 +4,12 @@ import { LanguageProvider } from "../context/LanguageContext";
 import { AuthProvider } from "../context/AuthContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { SettingsProvider } from "../context/SettingsContext";
+import { MapProvider } from "../context/MapContext"; 
 
 const _layout = () => {
   return (
-    <LanguageProvider>
+    <MapProvider>
+      <LanguageProvider>
       <ThemeProvider>
         <SettingsProvider>
           <AuthProvider>
@@ -27,6 +29,7 @@ const _layout = () => {
         </SettingsProvider>
       </ThemeProvider>
     </LanguageProvider>
+    </MapProvider>
   );
 };
 
