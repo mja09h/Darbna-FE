@@ -1,52 +1,357 @@
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Image,
+  StatusBar,
+  ScrollView,
+} from "react-native";
 import React from "react";
 import { useRouter } from "expo-router";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
+import { useAuth } from "../../../../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
 
-const index = () => {
+const HEADER_BG_COLOR = "#2c120c";
+
+const ProfileScreen = () => {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
+  const { user } = useAuth();
 
   const handleSettingsPress = () => {
     router.push("/(protected)/(tabs)/profile/(settings)");
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.text }]}>
-        {t.tabs.profile}
-      </Text>
+  const handleEditProfilePress = () => {
+    router.push("/(protected)/(tabs)/profile/edit");
+  };
 
-      <TouchableOpacity
-        style={[styles.settingsButton, { backgroundColor: colors.primary }]}
-        onPress={handleSettingsPress}
-      >
-        <Text
-          style={[styles.settingsButtonText, { color: colors.primaryLight }]}
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString(isRTL ? "ar-EG" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+
+      {/* Header Section */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{t.tabs.profile}</Text>
+
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            {user?.profilePicture ? (
+              <Image
+                source={{ uri: user.profilePicture }}
+                style={styles.avatar}
+              />
+            ) : (
+              <Ionicons name="person" size={48} color="#ad5410" />
+            )}
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.nameText}>{user?.name || "Guest User"}</Text>
+            <Text style={styles.usernameText}>
+              @{user?.username || "guest"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {user?.followers?.length || 0}
+            </Text>
+            <Text style={styles.statLabel}>{t.profile.followers}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {user?.following?.length || 0}
+            </Text>
+            <Text style={styles.statLabel}>{t.profile.following}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Content Section */}
+      <View style={[styles.content, { backgroundColor: colors.background }]}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          {t.settings.title}
-        </Text>
-        <Text style={[styles.arrow, { color: colors.primaryLight }]}>
-          {isRTL ? "←" : "→"}
-        </Text>
-      </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.editButton, { borderColor: colors.primary }]}
+              onPress={handleEditProfilePress}
+            >
+              <Text style={[styles.editButtonText, { color: colors.primary }]}>
+                {t.profile.editProfile}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bio */}
+          {user?.bio ? (
+            <View style={[styles.section, { backgroundColor: colors.surface }]}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.textSecondary }]}
+              >
+                {t.profile.bio}
+              </Text>
+              <Text style={[styles.bioText, { color: colors.text }]}>
+                {user.bio}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Details */}
+          <View style={[styles.section, { backgroundColor: colors.surface }]}>
+            <View style={styles.detailRow}>
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.detailText, { color: colors.text }]}>
+                {user?.email}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.detailText, { color: colors.text }]}>
+                {user?.phone || t.profile.noPhone}
+              </Text>
+            </View>
+
+            {user?.country && (
+              <View style={styles.detailRow}>
+                <Ionicons
+                  name="location-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
+                <Text style={[styles.detailText, { color: colors.text }]}>
+                  {user.country}
+                </Text>
+              </View>
+            )}
+            <View style={styles.detailRow}>
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.detailText, { color: colors.text }]}>
+                {t.profile.memberSince}{" "}
+                {user?.createdAt ? formatDate(user.createdAt) : ""}
+              </Text>
+            </View>
+          </View>
+
+          {/* Saved Routes Link */}
+          <TouchableOpacity
+            style={[
+              styles.settingsButton,
+              { backgroundColor: colors.surface, marginBottom: 12 },
+            ]}
+            onPress={() => router.push("/(protected)/(tabs)/saved")}
+          >
+            <View style={styles.settingsButtonContent}>
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.primaryLight },
+                ]}
+              >
+                <Ionicons
+                  name="heart-outline"
+                  size={22}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={[styles.settingsButtonText, { color: colors.text }]}>
+                {t.profile.savedRoutes}
+              </Text>
+            </View>
+            <Ionicons
+              name={isRTL ? "chevron-back" : "chevron-forward"}
+              size={22}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          {/* Settings Link */}
+          <TouchableOpacity
+            style={[styles.settingsButton, { backgroundColor: colors.surface }]}
+            onPress={handleSettingsPress}
+          >
+            <View style={styles.settingsButtonContent}>
+              <View
+                style={[
+                  styles.iconBox,
+                  { backgroundColor: colors.primaryLight },
+                ]}
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={22}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={[styles.settingsButtonText, { color: colors.text }]}>
+                {t.settings.title}
+              </Text>
+            </View>
+            <Ionicons
+              name={isRTL ? "chevron-back" : "chevron-forward"}
+              size={22}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
     </View>
   );
 };
 
-export default index;
+export default ProfileScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#faf5ef",
   },
-  title: {
-    fontSize: 28,
+  header: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 24,
+    color: "#f5e6d3",
+    marginBottom: 20,
+  },
+  profileHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#3d2818",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: "#ad5410",
+    overflow: "hidden",
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+  },
+  profileInfo: {
+    alignItems: "center",
+  },
+  nameText: {
+    fontSize: 24,
+    color: "#f5e6d3",
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  usernameText: {
+    fontSize: 16,
+    color: "#a89080",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 30,
+    marginTop: 10,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#f5e6d3",
+  },
+  statLabel: {
+    fontSize: 14,
+    color: "#a89080",
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: "#3d2818",
+  },
+  content: {
+    flex: 1,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: "hidden",
+  },
+  scrollContent: {
+    padding: 20,
+    paddingTop: 30,
+    gap: 20,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "center",
+  },
+  editButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  editButtonText: {
+    fontWeight: "600",
+  },
+  section: {
+    padding: 20,
+    borderRadius: 16,
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  bioText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  detailText: {
+    fontSize: 16,
   },
   settingsButton: {
     flexDirection: "row",
@@ -54,14 +359,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 20,
+    borderRadius: 16,
+  },
+  settingsButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    marginTop: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   settingsButtonText: {
     fontSize: 16,
     fontWeight: "600",
-  },
-  arrow: {
-    fontSize: 18,
   },
 });
