@@ -72,16 +72,22 @@ const updateUser = async (id: string, data: UpdateUserData) => {
         formData.append('bio', data.bio || '');
         formData.append('phone', data.phone || '');
         if (data.profilePicture && typeof data.profilePicture === 'object') {
+            console.log('data.profilePicture is an object');
             formData.append('profilePicture', {
                 uri: data.profilePicture.uri,
                 name: data.profilePicture.fileName,
-                type: data.profilePicture.type,
+                type: "image/jpeg",
             } as any);
         }
 
-        const response = await api.put(`/users/${id}`, formData);
+        const response = await api.put(`/users/${id}`, formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
         return response.data;
     } catch (error) {
+        console.log('error', error);
         throw error;
     }
 };
