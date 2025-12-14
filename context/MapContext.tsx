@@ -6,11 +6,15 @@ import React, {
   ReactNode,
 } from "react";
 import { io, Socket } from "socket.io-client";
-import axios from "axios"; // Assuming you use axios
+import api, { BASE_URL } from "../api/index";
 import { IMapContext, IMapState, ILocation } from "../types/map";
 
- const BACKEND_URL = 'http://localhost:8000';
-
+// Extract base URL without /api for Socket.IO connection
+const getSocketUrl = () => {
+  // BASE_URL is like "http://192.168.1.1:8000/api" or "http://localhost:8000/api"
+  // Socket.IO needs just "http://192.168.1.1:8000" or "http://localhost:8000"
+  return BASE_URL.replace("/api", "");
+};
 
 const MapContext = createContext<IMapContext | undefined>(undefined);
 
@@ -29,9 +33,9 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
   const fetchInitialData = async () => {
     try {
       const [routesRes, poisRes, heatmapRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/map/routes`),
-        axios.get(`${BACKEND_URL}/api/map/pois`),
-        axios.get(`${BACKEND_URL}/api/map/heatmap`),
+        api.get("/map/routes"),
+        api.get("/map/pois"),
+        api.get("/map/heatmap"),
       ]);
       setState((prevState) => ({
         ...prevState,
@@ -55,7 +59,8 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     // Initialize Socket.IO connection
-    const newSocket = io(BACKEND_URL);
+    const socketUrl = getSocketUrl();
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     // Fetch initial data when the component mounts

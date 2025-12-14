@@ -59,16 +59,35 @@ interface UpdateUserData {
     email?: string;
     password?: string;
     bio?: string;
-    profilePicture?: string;
-    coverPicture?: string;
+    profilePicture?: string | any;
+    coverPicture?: string | any;
     phone?: string;
 }
 
-const updateUser = async (id: string, data: UpdateUserData): Promise<User> => {
+const updateUser = async (id: string, data: UpdateUserData) => {
     try {
-        const response = await api.put(`/users/${id}`, data);
+        const formData = new FormData();
+        formData.append('name', data.name || '');
+        formData.append('country', data.country || '');
+        formData.append('bio', data.bio || '');
+        formData.append('phone', data.phone || '');
+        if (data.profilePicture && typeof data.profilePicture === 'object') {
+            console.log('data.profilePicture is an object');
+            formData.append('profilePicture', {
+                uri: data.profilePicture.uri,
+                name: data.profilePicture.fileName,
+                type: "image/jpeg",
+            } as any);
+        }
+
+        const response = await api.put(`/users/${id}`, formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
         return response.data;
     } catch (error) {
+        console.log('error', error);
         throw error;
     }
 };
