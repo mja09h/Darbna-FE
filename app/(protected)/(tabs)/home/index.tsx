@@ -363,6 +363,7 @@ const HomePage = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: 30,
     backgroundColor: COLORS.darkSandBrown,
   },
   container: {
