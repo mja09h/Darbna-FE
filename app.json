@@ -30,6 +30,9 @@
     "web": {
       "favicon": "./assets/darbna-logo-i.png"
     },
-    "plugins": ["expo-router", "expo-web-browser", "expo-apple-authentication"]
-  }
+    "plugins": ["expo-router", "expo-web-browser", "expo-apple-authentication","expo-location"]
+  },
+  "permissions": [
+    "locationAlwaysAndWhenInUsePermission"
+  ]
 }
