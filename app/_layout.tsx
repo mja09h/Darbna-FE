@@ -5,10 +5,11 @@ import { AuthProvider } from "../context/AuthContext";
 import { ThemeProvider } from "../context/ThemeContext";
 import { SettingsProvider } from "../context/SettingsContext";
 import { MapProvider } from "../context/MapContext"; 
-
+import { RouteRecordingProvider } from "../context/RouteRecordingContext";
 const _layout = () => {
   return (
     <MapProvider>
+      <RouteRecordingProvider>
       <LanguageProvider>
       <ThemeProvider>
         <SettingsProvider>
@@ -29,7 +30,8 @@ const _layout = () => {
         </SettingsProvider>
       </ThemeProvider>
     </LanguageProvider>
-    </MapProvider>
+    </RouteRecordingProvider>
+    </MapProvider>  
   );
 };
 

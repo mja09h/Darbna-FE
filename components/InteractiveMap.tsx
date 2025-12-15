@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import MapView, {
   Marker,
   Polyline,
@@ -6,31 +6,109 @@ import MapView, {
   UrlTile,
   PROVIDER_DEFAULT,
 } from "react-native-maps";
-import { StyleSheet, View, Button } from "react-native";
+import { StyleSheet, View, Button, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { useMap } from "../context/MapContext";
+import { IGPSPoint } from "../types/route";
 
-const InteractiveMap = () => {
+interface InteractiveMapProps {
+  userLocation: Location.LocationObject | null;
+  currentRoute: {
+    name: string;
+    description: string;
+    points: IGPSPoint[];
+    startTime: Date | null;
+    distance: number;
+    duration: number;
+  } | null;
+}
+
+const InteractiveMap = ({
+  userLocation,
+  currentRoute,
+}: InteractiveMapProps) => {
   const { locations, routes, pois, heatmapData } = useMap();
   const [showRoutes, setShowRoutes] = useState(true);
   const [showPois, setShowPois] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const mapRef = useRef<MapView>(null);
 
   // OpenStreetMap tile server URL
   const osmTileUrl = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
+  // Center map on user location when first obtained
+  useEffect(() => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        1000
+      );
+    }
+  }, [userLocation?.coords.latitude, userLocation?.coords.longitude]);
+
+  // Function to center map on user location
+  const centerOnUserLocation = () => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        1000
+      );
+    }
+  };
+
+  // Determine initial region based on user location or default
+  const getInitialRegion = () => {
+    if (userLocation) {
+      return {
+        latitude: userLocation.coords.latitude,
+        longitude: userLocation.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+    }
+    return {
+      latitude: 24.7136,
+      longitude: 46.6753,
+      latitudeDelta: 15,
+      longitudeDelta: 15,
+    };
+  };
+
   return (
     <View style={styles.container}>
       <MapView
-        provider={PROVIDER_DEFAULT} // Important for custom tiles
+        ref={mapRef}
+        provider={PROVIDER_DEFAULT}
         style={styles.map}
-        initialRegion={{
-          latitude: 24.7136, // Default to a central location, e.g., Riyadh
-          longitude: 46.6753,
-          latitudeDelta: 15,
-          longitudeDelta: 15,
-        }}
+        initialRegion={getInitialRegion()}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
       >
         <UrlTile urlTemplate={osmTileUrl} />
+
+        {/* Display user's current location */}
+        {userLocation && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.coords.latitude,
+              longitude: userLocation.coords.longitude,
+            }}
+            title="My Location"
+            pinColor="#4285F4"
+            tracksViewChanges={false}
+          />
+        )}
 
         {/* Display other users' locations */}
         {locations.map((loc) => (
@@ -44,7 +122,21 @@ const InteractiveMap = () => {
           />
         ))}
 
-        {/* Display routes/paths */}
+        {/* Display currently recording route in real-time */}
+        {currentRoute && currentRoute.points.length >= 2 && (
+          <Polyline
+            coordinates={currentRoute.points.map((point) => ({
+              latitude: point.latitude,
+              longitude: point.longitude,
+            }))}
+            strokeColor="#FF0000"
+            strokeWidth={5}
+            lineCap="round"
+            lineJoin="round"
+          />
+        )}
+
+        {/* Display saved routes/paths */}
         {showRoutes &&
           routes.map((route) => (
             <Polyline
@@ -53,7 +145,7 @@ const InteractiveMap = () => {
                 latitude: c[1],
                 longitude: c[0],
               }))}
-              strokeColor="#FF0000" // red
+              strokeColor="#FF0000"
               strokeWidth={3}
             />
           ))}
@@ -102,18 +194,26 @@ const InteractiveMap = () => {
           onPress={() => setShowHeatmap(!showHeatmap)}
         />
       </View>
+
+      {/* My Location Button */}
+      {userLocation && (
+        <TouchableOpacity
+          style={styles.myLocationButton}
+          onPress={centerOnUserLocation}
+        >
+          <Ionicons name="locate" size={24} color="#4285F4" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-    alignItems: "center",
+    flex: 1,
   },
   map: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
   },
   buttonContainer: {
     flexDirection: "row",
@@ -121,6 +221,22 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.7)",
     paddingVertical: 8,
     width: "100%",
+  },
+  myLocationButton: {
+    position: "absolute",
+    bottom: 100,
+    right: 16,
+    backgroundColor: "white",
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
   },
 });
 
