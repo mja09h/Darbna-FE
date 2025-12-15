@@ -10,8 +10,12 @@ import { StyleSheet, View, Button, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useMap } from "../context/MapContext";
+import { useAuth } from "../context/AuthContext";
 import { IGPSPoint } from "../types/route";
 import { BASE_URL } from "../api/index";
+import PinCreationModal from "./PinCreationModal";
+import { CreatePinData } from "../types/map";
+import { Alert } from "react-native";
 
 interface InteractiveMapProps {
   userLocation: Location.LocationObject | null;
@@ -29,11 +33,28 @@ const InteractiveMap = ({
   userLocation,
   currentRoute,
 }: InteractiveMapProps) => {
-  const { locations, routes, pois, heatmapData } = useMap();
+  const { locations, routes, pois, heatmapData, pinnedPlaces, createPin } =
+    useMap();
+  const { user } = useAuth();
   const [showRoutes, setShowRoutes] = useState(true);
   const [showPois, setShowPois] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const mapRef = useRef<MapView>(null);
+
+  // Wrapper function to add userId to pin data from AuthContext
+  const handleCreatePin = async (pinData: CreatePinData) => {
+    if (!user?._id) {
+      Alert.alert("Error", "Please log in to create pins");
+      return;
+    }
+    // Add userId to pin data from AuthContext
+    await createPin({ ...pinData, userId: user._id });
+  };
 
   // OpenStreetMap tile server URL via backend proxy
   const osmTileUrl = `${BASE_URL}/map/tiles/{z}/{x}/{y}.png`;
@@ -95,6 +116,11 @@ const InteractiveMap = ({
         initialRegion={getInitialRegion()}
         showsUserLocation={true}
         showsMyLocationButton={false}
+        onLongPress={(e) => {
+          const { latitude, longitude } = e.nativeEvent.coordinate;
+          setSelectedLocation({ latitude, longitude });
+          setShowPinModal(true);
+        }}
       >
         <UrlTile urlTemplate={osmTileUrl} />
 
@@ -166,6 +192,28 @@ const InteractiveMap = ({
             />
           ))}
 
+        {/* Display Pinned Places */}
+        {pinnedPlaces.map((pin) => {
+          // Filter: show if public OR if it's the user's own pin
+          const shouldShow =
+            pin.isPublic || (user && pin.userId._id === user._id);
+
+          if (!shouldShow) return null;
+
+          return (
+            <Marker
+              key={pin._id}
+              coordinate={{
+                latitude: pin.location.coordinates[1],
+                longitude: pin.location.coordinates[0],
+              }}
+              title={pin.title}
+              description={pin.description}
+              pinColor={pin.isPublic ? "#4CAF50" : "#C46F26"}
+            />
+          );
+        })}
+
         {/* Display Heatmap Layer */}
         {showHeatmap && heatmapData.length > 0 && (
           <Heatmap
@@ -205,6 +253,17 @@ const InteractiveMap = ({
           <Ionicons name="locate" size={24} color="#4285F4" />
         </TouchableOpacity>
       )}
+
+      {/* Pin Creation Modal */}
+      <PinCreationModal
+        visible={showPinModal}
+        location={selectedLocation}
+        onClose={() => {
+          setShowPinModal(false);
+          setSelectedLocation(null);
+        }}
+        onCreate={handleCreatePin}
+      />
     </View>
   );
 };
