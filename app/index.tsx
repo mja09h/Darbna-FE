@@ -4,7 +4,7 @@ import { Redirect } from "expo-router";
 
 const index = () => {
   return Redirect({
-    href: "/(protected)/(tabs)/profile/(settings)",
+    href: "/(protected)/(tabs)/home",
   });
 };
 

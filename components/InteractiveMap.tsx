@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useMap } from "../context/MapContext";
 import { IGPSPoint } from "../types/route";
+import { BASE_URL } from "../api/index";
 
 interface InteractiveMapProps {
   userLocation: Location.LocationObject | null;
@@ -35,8 +36,8 @@ const InteractiveMap = ({
     null
   );
 
-  // OpenStreetMap tile server URL
-  const osmTileUrl = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  // OpenStreetMap tile server URL via backend proxy
+  const osmTileUrl = `${BASE_URL}/map/tiles/{z}/{x}/{y}.png`;
 
   // Track device heading/compass direction
   useEffect(() => {
