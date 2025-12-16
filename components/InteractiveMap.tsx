@@ -6,12 +6,17 @@ import MapView, {
   UrlTile,
   PROVIDER_DEFAULT,
 } from "react-native-maps";
-import { StyleSheet, View, Button, TouchableOpacity } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useMap } from "../context/MapContext";
+import { useAuth } from "../context/AuthContext";
 import { IGPSPoint } from "../types/route";
 import { BASE_URL } from "../api/index";
+import PinCreationModal from "./PinCreationModal";
+import { CreatePinData, IPinnedPlace } from "../types/map";
+import { Alert } from "react-native";
+import { useRouter } from "expo-router";
 
 interface InteractiveMapProps {
   userLocation: Location.LocationObject | null;
@@ -29,14 +34,97 @@ const InteractiveMap = ({
   userLocation,
   currentRoute,
 }: InteractiveMapProps) => {
-  const { locations, routes, pois, heatmapData } = useMap();
+  const { locations, routes, pois, heatmapData, pinnedPlaces, createPin } =
+    useMap();
+  const { user } = useAuth();
+  const router = useRouter();
   const [showRoutes, setShowRoutes] = useState(true);
   const [showPois, setShowPois] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const mapRef = useRef<MapView>(null);
+  const [heading, setHeading] = useState<number | null>(null);
+  const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(
+    null
+  );
+
+  // Handle pin marker press - navigate to detail page
+  const handlePinPress = (pin: IPinnedPlace) => {
+    router.push({
+      pathname: "/(protected)/(tabs)/home/pin-detail",
+      params: { pinId: pin._id },
+    });
+  };
+
+  // Wrapper function to add userId to pin data from AuthContext
+  const handleCreatePin = async (pinData: CreatePinData) => {
+    if (!user?._id) {
+      Alert.alert("Error", "Please log in to create pins");
+      return;
+    }
+    // Add userId to pin data from AuthContext
+    await createPin({ ...pinData, userId: user._id });
+  };
 
   // OpenStreetMap tile server URL via backend proxy
   const osmTileUrl = `${BASE_URL}/map/tiles/{z}/{x}/{y}.png`;
+
+  // Track device heading/compass direction
+  useEffect(() => {
+    const startHeadingTracking = async () => {
+      try {
+        // Check if heading is available
+        const hasHeading = await Location.hasServicesEnabledAsync();
+        if (!hasHeading) {
+          console.warn("Heading services not available");
+          return;
+        }
+
+        // Watch heading updates
+        headingSubscriptionRef.current = await Location.watchHeadingAsync(
+          (headingData) => {
+            if (headingData.trueHeading !== -1) {
+              setHeading(headingData.trueHeading);
+            } else if (headingData.magHeading !== -1) {
+              setHeading(headingData.magHeading);
+            }
+          }
+        );
+      } catch (error) {
+        console.error("Error starting heading tracking:", error);
+        // Try to get heading from location updates as fallback
+        if (
+          userLocation?.coords.heading !== undefined &&
+          userLocation.coords.heading !== null
+        ) {
+          setHeading(userLocation.coords.heading);
+        }
+      }
+    };
+
+    startHeadingTracking();
+
+    return () => {
+      if (headingSubscriptionRef.current) {
+        headingSubscriptionRef.current.remove();
+      }
+    };
+  }, []);
+
+  // Also check userLocation for heading as fallback
+  useEffect(() => {
+    if (
+      userLocation?.coords.heading !== undefined &&
+      userLocation.coords.heading !== null &&
+      heading === null
+    ) {
+      setHeading(userLocation.coords.heading);
+    }
+  }, [userLocation?.coords.heading]);
 
   // Center map on user location when first obtained
   useEffect(() => {
@@ -68,6 +156,13 @@ const InteractiveMap = ({
     }
   };
 
+  // Convert heading degrees to cardinal direction
+  const getCardinalDirection = (heading: number): string => {
+    const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    const index = Math.round(heading / 45) % 8;
+    return directions[index];
+  };
+
   // Determine initial region based on user location or default
   const getInitialRegion = () => {
     if (userLocation) {
@@ -95,6 +190,11 @@ const InteractiveMap = ({
         initialRegion={getInitialRegion()}
         showsUserLocation={true}
         showsMyLocationButton={false}
+        onLongPress={(e) => {
+          const { latitude, longitude } = e.nativeEvent.coordinate;
+          setSelectedLocation({ latitude, longitude });
+          setShowPinModal(true);
+        }}
       >
         <UrlTile urlTemplate={osmTileUrl} />
 
@@ -138,18 +238,17 @@ const InteractiveMap = ({
         )}
 
         {/* Display saved routes/paths */}
-        {showRoutes &&
-          routes.map((route) => (
-            <Polyline
-              key={route._id}
-              coordinates={route.path.coordinates.map((c) => ({
-                latitude: c[1],
-                longitude: c[0],
-              }))}
-              strokeColor="#FF0000"
-              strokeWidth={3}
-            />
-          ))}
+        {routes.map((route) => (
+          <Polyline
+            key={route._id}
+            coordinates={route.path.coordinates.map((c) => ({
+              latitude: c[1],
+              longitude: c[0],
+            }))}
+            strokeColor="#FF0000"
+            strokeWidth={3}
+          />
+        ))}
 
         {/* Display Points of Interest */}
         {showPois &&
@@ -166,6 +265,29 @@ const InteractiveMap = ({
             />
           ))}
 
+        {/* Display Pinned Places */}
+        {pinnedPlaces.map((pin) => {
+          // Filter: show if public OR if it's the user's own pin
+          const shouldShow =
+            pin.isPublic || (user && pin.userId._id === user._id);
+
+          if (!shouldShow) return null;
+
+          return (
+            <Marker
+              key={pin._id}
+              coordinate={{
+                latitude: pin.location.coordinates[1],
+                longitude: pin.location.coordinates[0],
+              }}
+              title={pin.title}
+              description={pin.description}
+              pinColor={pin.isPublic ? "#4CAF50" : "#C46F26"}
+              onPress={() => handlePinPress(pin)}
+            />
+          );
+        })}
+
         {/* Display Heatmap Layer */}
         {showHeatmap && heatmapData.length > 0 && (
           <Heatmap
@@ -177,24 +299,18 @@ const InteractiveMap = ({
             opacity={0.7}
             radius={50}
           />
-        )}
+        ))}
       </MapView>
 
-      {/* Layer Toggle Buttons */}
-      <View style={styles.buttonContainer}>
-        <Button
-          title={showRoutes ? "Hide Routes" : "Show Routes"}
-          onPress={() => setShowRoutes(!showRoutes)}
-        />
-        <Button
-          title={showPois ? "Hide POIs" : "Show POIs"}
-          onPress={() => setShowPois(!showPois)}
-        />
-        <Button
-          title={showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
-          onPress={() => setShowHeatmap(!showHeatmap)}
-        />
-      </View>
+      {/* Digital Compass */}
+      {heading !== null && (
+        <View style={styles.compassContainer}>
+          <Text style={styles.compassText}>
+            {String(Math.round(heading)).padStart(3, "0")}°{" "}
+            {getCardinalDirection(heading)}
+          </Text>
+        </View>
+      )}
 
       {/* My Location Button */}
       {userLocation && (
@@ -205,6 +321,17 @@ const InteractiveMap = ({
           <Ionicons name="locate" size={24} color="#4285F4" />
         </TouchableOpacity>
       )}
+
+      {/* Pin Creation Modal */}
+      <PinCreationModal
+        visible={showPinModal}
+        location={selectedLocation}
+        onClose={() => {
+          setShowPinModal(false);
+          setSelectedLocation(null);
+        }}
+        onCreate={handleCreatePin}
+      />
     </View>
   );
 };
@@ -216,12 +343,27 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    paddingVertical: 8,
-    width: "100%",
+  compassContainer: {
+    position: "absolute",
+    top: 16,
+    alignSelf: "center",
+    zIndex: 10,
+  },
+  compassText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#3A1D1A",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#3A1D1A",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   myLocationButton: {
     position: "absolute",

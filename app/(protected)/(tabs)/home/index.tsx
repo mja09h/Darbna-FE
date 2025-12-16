@@ -9,11 +9,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useRouter } from "expo-router";
+import { useNavigation } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
+import { useSettings } from "../../../../context/SettingsContext";
 import { IGPSPoint } from "../../../../types/route";
 import InteractiveMap from "../../../../components/InteractiveMap";
-import SaveRouteModal from "../../../../components/SaveRouteModal";
+import SOSModal from "../../../../components/SOSModal";
+import SOSHeaderButton from "../../../../components/SOSHeaderButton";
 
 // Darbna Brand Colors
 const COLORS = {
@@ -39,10 +41,12 @@ const HomePage = () => {
     addPoint,
     saveRoute,
   } = useRouteRecording();
+  const { units } = useSettings();
 
+  const navigation = useNavigation();
   const [routeName, setRouteName] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [screenshotUri, setScreenshotUri] = useState<string | undefined>();
+  const [isSOSModalVisible, setSOSModalVisible] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
@@ -134,7 +138,7 @@ const HomePage = () => {
     };
   }, [isRecording, addPoint]);
 
-  // Update recording time every second
+  // Update recording time every second (only when actively recording)
   useEffect(() => {
     if (!isRecording || !currentRoute?.startTime) return;
 
@@ -273,10 +277,22 @@ const HomePage = () => {
   };
 
   const formatDistance = (km: number) => {
-    if (km < 1) {
-      return `${(km * 1000).toFixed(0)}m`;
+    if (units === "miles") {
+      // Convert kilometers to miles
+      const miles = km * 0.621371;
+      if (miles < 1) {
+        // Convert to feet (1 mile = 5280 feet)
+        const feet = miles * 5280;
+        return `${feet.toFixed(0)}ft`;
+      }
+      return `${miles.toFixed(2)}mi`;
+    } else {
+      // Default to kilometers
+      if (km < 1) {
+        return `${(km * 1000).toFixed(0)}m`;
+      }
+      return `${km.toFixed(2)}km`;
     }
-    return `${km.toFixed(2)}km`;
   };
 
   return (
@@ -285,19 +301,35 @@ const HomePage = () => {
         {/* Header - Styled with Darbna Brand Colors */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <SOSHeaderButton
+              onPress={() => {
+                console.log("SOSHeaderButton pressed");
+                setSOSModalVisible(true);
+              }}
+            />
+          </View>
+          <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Map</Text>
           </View>
           <TouchableOpacity
             style={[
               styles.recordButton,
               isRecording && styles.recordButtonActive,
+              currentRoute && !isRecording && styles.recordButtonDisabled,
             ]}
             onPress={isRecording ? handleStopRecording : handleStartRecording}
+            disabled={currentRoute !== null && !isRecording}
           >
             <Ionicons
               name={isRecording ? "stop-circle" : "stop"}
               size={28}
-              color={isRecording ? COLORS.white : COLORS.desertOrange}
+              color={
+                currentRoute && !isRecording
+                  ? COLORS.lightText
+                  : isRecording
+                  ? COLORS.white
+                  : COLORS.desertOrange
+              }
             />
           </TouchableOpacity>
         </View>
@@ -309,47 +341,113 @@ const HomePage = () => {
         />
 
         {/* Recording Status Bar */}
-        {isRecording && currentRoute && (
-          <View style={styles.statusBar}>
-            <View style={styles.statusContent}>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Recording</Text>
-                <Text style={styles.statusValue}>
-                  {formatTime(recordingTime)}
-                </Text>
+        {currentRoute &&
+          (() => {
+            const isPaused = !isRecording;
+            return (
+              <View style={styles.statusBar}>
+                <View style={styles.statusContent}>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>
+                      {isPaused ? "Paused" : "Recording"}
+                    </Text>
+                    <Text style={styles.statusValue}>
+                      {formatTime(recordingTime)}
+                    </Text>
+                  </View>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Distance</Text>
+                    <Text style={styles.statusValue}>
+                      {formatDistance(currentRoute.distance)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.pauseButton}
+                    onPress={isPaused ? resumeRecording : pauseRecording}
+                  >
+                    <Ionicons
+                      name={isPaused ? "play" : "pause"}
+                      size={20}
+                      color={COLORS.white}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Distance</Text>
-                <Text style={styles.statusValue}>
-                  {formatDistance(currentRoute.distance)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.pauseButton}
-                onPress={isRecording ? pauseRecording : resumeRecording}
-              >
-                <Ionicons
-                  name={isRecording ? "pause" : "play"}
-                  size={20}
-                  color={COLORS.white}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+            );
+          })()}
 
         {/* Save Route Modal */}
         <SaveRouteModal
           visible={showSaveModal}
-          routeName={routeName}
-          distance={currentRoute?.distance || 0}
-          duration={recordingTime}
-          screenshotUri={screenshotUri}
-          onSave={handleSaveRoute}
-          onCancel={() => {
-            setShowSaveModal(false);
-            setScreenshotUri(undefined);
-          }}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowSaveModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Save Route</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Route Name"
+                value={routeName}
+                onChangeText={setRouteName}
+                placeholderTextColor={COLORS.lightText}
+              />
+
+              <TextInput
+                style={[styles.input, styles.descriptionInput]}
+                placeholder="Description (optional)"
+                value={routeDescription}
+                onChangeText={setRouteDescription}
+                multiline={true}
+                numberOfLines={4}
+                placeholderTextColor={COLORS.lightText}
+              />
+
+              <View style={styles.routeStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Distance</Text>
+                  <Text style={styles.statValue}>
+                    {formatDistance(currentRoute?.distance || 0)}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Duration</Text>
+                  <Text style={styles.statValue}>
+                    {formatTime(recordingTime)}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Points</Text>
+                  <Text style={styles.statValue}>
+                    {currentRoute?.points.length || 0}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setShowSaveModal(false)}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleSaveRoute}
+                >
+                  <Text style={styles.modalButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* SOS Modal */}
+        <SOSModal
+          visible={isSOSModalVisible}
+          onClose={() => setSOSModalVisible(false)}
         />
       </View>
     </SafeAreaView>
@@ -380,15 +478,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
+    position: "relative",
   },
   headerLeft: {
     flex: 1,
+    alignItems: "flex-start",
+  },
+  headerCenter: {
+    // position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 0,
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-end",
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "700",
     color: COLORS.white,
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   recordButton: {
     padding: 10,
@@ -399,6 +512,10 @@ const styles = StyleSheet.create({
   },
   recordButtonActive: {
     backgroundColor: COLORS.desertOrange,
+  },
+  recordButtonDisabled: {
+    backgroundColor: COLORS.sandBeige,
+    opacity: 0.6,
   },
   statusBar: {
     position: "absolute",

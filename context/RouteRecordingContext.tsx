@@ -5,13 +5,17 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import api from "../api/index";
 import {
   IRouteRecordingState,
   IRouteRecordingContext,
   IGPSPoint,
   IRecordedRoute,
 } from "../types/route";
+import {
+  createRoute,
+  getUserRoutes,
+  deleteRoute as deleteRouteAPI,
+} from "../api/routes";
 
 const RouteRecordingContext = createContext<IRouteRecordingContext | undefined>(
   undefined
@@ -159,9 +163,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
       };
 
       try {
-        // Create the route first
-        const response = await api.post("/routes", routeData);
-        const savedRoute = response.data;
+        const savedRoute = await createRoute(routeData);
 
         // Upload screenshot if provided
         if (screenshotUri) {
@@ -232,7 +234,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
   // Delete a route from the backend
   const deleteRoute = useCallback(async (routeId: string) => {
     try {
-      await api.delete(`/routes/${routeId}`);
+      await deleteRouteAPI(routeId);
       setState((prevState) => ({
         ...prevState,
         recordedRoutes: prevState.recordedRoutes.filter(
@@ -263,10 +265,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
   // Fetch all routes for the current user
   const fetchUserRoutes = useCallback(async () => {
     try {
-      const response = await api.get("/routes");
+      const routes = await getUserRoutes();
       setState((prevState) => ({
         ...prevState,
-        recordedRoutes: response.data,
+        recordedRoutes: routes,
       }));
     } catch (error: any) {
       // Only log non-network errors to avoid console spam when backend is offline
