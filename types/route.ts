@@ -7,6 +7,15 @@ export interface IGPSPoint {
   speed?: number;
 }
 
+// Route type enum
+export type RouteType = "Running" | "Cycling" | "Walking" | "Hiking" | "Other";
+
+// Image interface for route media
+export interface IRouteImage {
+  url: string;
+  uploadedAt: Date | string;
+}
+
 // Represents a recorded route
 export interface IRecordedRoute {
   _id: string;
@@ -22,6 +31,17 @@ export interface IRecordedRoute {
   distance: number;
   duration: number;
   points: IGPSPoint[];
+  // NEW FIELDS
+  isPublic: boolean;
+  routeType: string;
+  screenshot?: {
+    url: string;
+    uploadedAt: Date;
+  };
+  images?: Array<{
+    url: string;
+    uploadedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +56,8 @@ export interface IRouteRecordingState {
     startTime: Date | null;
     distance: number;
     duration: number;
+    isPublic?: boolean;
+    routeType?: string;
   } | null;
   recordedRoutes: IRecordedRoute[];
   selectedRoute: IRecordedRoute | null;
@@ -50,7 +72,10 @@ export interface IRouteRecordingContext extends IRouteRecordingState {
   addPoint: (point: IGPSPoint) => void;
   saveRoute: (
     routeName: string,
-    description?: string
+    description: string,
+    isPublic: boolean,
+    routeType: string,
+    screenshot?: string // Base64 or URI
   ) => Promise<IRecordedRoute>;
   deleteRoute: (routeId: string) => Promise<void>;
   fetchUserRoutes: () => Promise<void>;

@@ -128,7 +128,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
   const saveRoute = useCallback(
     async (
       routeName: string,
-      description?: string
+      description: string,
+      isPublic: boolean,
+      routeType: string,
+      screenshotUri?: string
     ): Promise<IRecordedRoute> => {
       if (!state.currentRoute || state.currentRoute.points.length === 0) {
         throw new Error("No route data to save");
@@ -141,7 +144,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
 
       const routeData = {
         name: routeName,
-        description: description || state.currentRoute.description,
+        description: description,
         path: {
           type: "LineString",
           coordinates,
@@ -151,11 +154,44 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         distance: state.currentRoute.distance,
         duration: state.currentRoute.duration,
         points: state.currentRoute.points,
+        isPublic: isPublic,
+        routeType: routeType,
       };
 
       try {
+        // Create the route first
         const response = await api.post("/routes", routeData);
         const savedRoute = response.data;
+
+        // Upload screenshot if provided
+        if (screenshotUri) {
+          try {
+            const formData = new FormData();
+
+            // Convert URI to blob/file
+            const filename =
+              screenshotUri.split("/").pop() || "route-screenshot.png";
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/png`;
+
+            formData.append("screenshot", {
+              uri: screenshotUri,
+              type: type,
+              name: filename,
+            } as any);
+
+            await api.post(`/routes/${savedRoute._id}/screenshot`, formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            });
+          } catch (error) {
+            // Continue even if screenshot upload fails
+            if (__DEV__) {
+              console.warn("Error uploading screenshot:", error);
+            }
+          }
+        }
 
         setState((prevState) => ({
           ...prevState,
@@ -165,8 +201,19 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         }));
 
         return savedRoute;
-      } catch (error) {
-        console.error("Error saving route:", error);
+      } catch (error: any) {
+        // Only log non-network errors to avoid console spam when backend is offline
+        if (__DEV__) {
+          if (
+            error?.code === "ERR_NETWORK" ||
+            error?.message?.includes("Network Error")
+          ) {
+            // Network error - backend not available, silently fail
+          } else {
+            // Other errors should be logged
+            console.warn("Error saving route:", error?.message || error);
+          }
+        }
         throw error;
       }
     },
@@ -196,8 +243,19 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
             ? null
             : prevState.selectedRoute,
       }));
-    } catch (error) {
-      console.error("Error deleting route:", error);
+    } catch (error: any) {
+      // Only log non-network errors to avoid console spam when backend is offline
+      if (__DEV__) {
+        if (
+          error?.code === "ERR_NETWORK" ||
+          error?.message?.includes("Network Error")
+        ) {
+          // Network error - backend not available, silently fail
+        } else {
+          // Other errors should be logged
+          console.warn("Error deleting route:", error?.message || error);
+        }
+      }
       throw error;
     }
   }, []);
@@ -210,8 +268,19 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         ...prevState,
         recordedRoutes: response.data,
       }));
-    } catch (error) {
-      console.error("Error fetching routes:", error);
+    } catch (error: any) {
+      // Only log non-network errors to avoid console spam when backend is offline
+      if (__DEV__) {
+        if (
+          error?.code === "ERR_NETWORK" ||
+          error?.message?.includes("Network Error")
+        ) {
+          // Network error - backend not available, silently fail
+        } else {
+          // Other errors should be logged
+          console.warn("Error fetching routes:", error?.message || error);
+        }
+      }
       throw error;
     }
   }, []);
