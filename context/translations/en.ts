@@ -41,7 +41,8 @@ export const en = {
 
     // Forgot Password
     forgotPasswordTitle: "Forgot Password?",
-    forgotPasswordSubtitle: "Enter your email and we'll send you a link to reset your password",
+    forgotPasswordSubtitle:
+      "Enter your email and we'll send you a link to reset your password",
     sendResetLink: "Send Reset Link",
     backToLogin: "Back to Login",
 
@@ -54,7 +55,8 @@ export const en = {
     usernameRequired: "Username is required",
     usernameTooShort: "Username must be at least 3 characters",
     usernameTooLong: "Username must be less than 20 characters",
-    usernameInvalid: "Username can only contain letters, numbers, and underscores",
+    usernameInvalid:
+      "Username can only contain letters, numbers, and underscores",
     usernameNoSpaces: "Username cannot contain spaces",
     emailInvalid: "Please enter a valid email address",
     passwordTooShort: "Password must be at least 6 characters",
@@ -161,6 +163,39 @@ export const en = {
     mySubscriptions: "My Subscriptions",
     freePlan: "Free Plan",
     account: "Account",
+  },
+
+  // Saved Routes
+  savedRoutes: {
+    title: "Saved Routes",
+    noRoutes: "No saved routes yet",
+    noRoutesDescription: "Start recording routes to see them here",
+    routeName: "Route Name",
+    distance: "Distance",
+    duration: "Duration",
+    dateSaved: "Date Saved",
+    averageSpeed: "Average Speed",
+    startLocation: "Start Location",
+    endLocation: "End Location",
+    deleteRoute: "Delete Route",
+    deleteConfirm: "Are you sure you want to delete this route?",
+    deleteSuccess: "Route deleted successfully",
+    deleteFailed: "Failed to delete route",
+    viewFullMap: "View Full Map",
+    startFromRoute: "Start From This Route",
+    points: "Points",
+    description: "Description",
+    noDescription: "No description",
+    routeType: "Route Type",
+    startTime: "Start Time",
+    // Route types
+    routeTypes: {
+      Running: "Running",
+      Cycling: "Cycling",
+      Walking: "Walking",
+      Hiking: "Hiking",
+      Other: "Other",
+    },
   },
 };
 

@@ -5,8 +5,6 @@ import {
   TouchableOpacity,
   Text,
   Alert,
-  TextInput,
-  Modal,
   SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,6 +30,7 @@ const COLORS = {
 };
 
 const HomePage = () => {
+  const router = useRouter();
   const {
     isRecording,
     currentRoute,
@@ -46,7 +45,6 @@ const HomePage = () => {
 
   const navigation = useNavigation();
   const [routeName, setRouteName] = useState("");
-  const [routeDescription, setRouteDescription] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSOSModalVisible, setSOSModalVisible] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
@@ -179,43 +177,92 @@ const HomePage = () => {
     );
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     Alert.alert("Stop Recording", "Do you want to save this route?", [
       {
         text: "Discard",
         onPress: async () => {
           await stopRecording();
           setRouteName("");
-          setRouteDescription("");
           setRecordingTime(0);
+          setScreenshotUri(undefined);
         },
         style: "destructive",
       },
       {
         text: "Save",
-        onPress: () => {
+        onPress: async () => {
+          // Capture screenshot of the map if possible
+          // Note: For now, we'll skip screenshot capture as it requires react-native-view-shot
+          // You can add it later by wrapping the map in a View with a ref
+          setScreenshotUri(undefined);
           setShowSaveModal(true);
         },
       },
     ]);
   };
 
-  const handleSaveRoute = async () => {
+  const handleSaveRoute = async (
+    description: string,
+    isPublic: boolean,
+    routeType: string
+  ) => {
     if (!routeName.trim()) {
       Alert.alert("Error", "Please enter a route name");
       return;
     }
 
     try {
-      await saveRoute(routeName, routeDescription);
+      await saveRoute(
+        routeName,
+        description,
+        isPublic,
+        routeType,
+        screenshotUri
+      );
       Alert.alert("Success", "Route saved successfully!");
       setShowSaveModal(false);
       setRouteName("");
-      setRouteDescription("");
       setRecordingTime(0);
-    } catch (error) {
-      Alert.alert("Error", "Failed to save route");
-      console.error("Error saving route:", error);
+      setScreenshotUri(undefined);
+
+      // Navigate to appropriate page based on privacy setting
+      if (isPublic) {
+        // Navigate to community page
+        router.push("/(protected)/(tabs)/community");
+      } else {
+        // Navigate to saved page
+        router.push("/(protected)/(tabs)/saved");
+      }
+    } catch (error: any) {
+      // Handle network errors gracefully
+      if (
+        error?.code === "ERR_NETWORK" ||
+        error?.message?.includes("Network Error")
+      ) {
+        Alert.alert(
+          "Backend Server Not Available",
+          "The backend server is not running or not reachable.\n\n" +
+            "To fix this:\n" +
+            "1. Start your backend server on port 8000\n" +
+            "2. Make sure your device/simulator can reach the server\n" +
+            "3. Check the console for the API URL being used\n\n" +
+            "Note: The route data is still saved locally and can be synced when the server is available."
+        );
+      } else {
+        Alert.alert("Error", "Failed to save route. Please try again.");
+      }
+      // Don't log network errors to console
+      if (
+        __DEV__ &&
+        !(
+          error?.code === "ERR_NETWORK" ||
+          error?.message?.includes("Network Error")
+        )
+      ) {
+        console.warn("Error saving route:", error?.message || error);
+      }
+      throw error; // Re-throw so modal can handle it
     }
   };
 
@@ -330,7 +377,7 @@ const HomePage = () => {
           })()}
 
         {/* Save Route Modal */}
-        <Modal
+        <SaveRouteModal
           visible={showSaveModal}
           transparent={true}
           animationType="slide"
@@ -512,84 +559,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 30,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 18,
-    color: COLORS.darkSandBrown,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: COLORS.sandBeige,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
-    fontSize: 14,
-    color: COLORS.text,
-    backgroundColor: COLORS.offWhiteDesert,
-  },
-  descriptionInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  routeStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 18,
-    paddingVertical: 14,
-    backgroundColor: COLORS.sandBeige,
-    borderRadius: 12,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.palmBrown,
-    marginBottom: 4,
-    fontWeight: "600",
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.darkSandBrown,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 18,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: COLORS.sandBeige,
-  },
-  saveButton: {
-    backgroundColor: COLORS.desertOrange,
-  },
-  modalButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.white,
   },
 });
 

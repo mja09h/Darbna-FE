@@ -43,7 +43,8 @@ export const ar: TranslationKeys = {
 
     // Forgot Password
     forgotPasswordTitle: "نسيت كلمة المرور؟",
-    forgotPasswordSubtitle: "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
+    forgotPasswordSubtitle:
+      "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
     sendResetLink: "إرسال رابط إعادة التعيين",
     backToLogin: "العودة لتسجيل الدخول",
 
@@ -56,7 +57,8 @@ export const ar: TranslationKeys = {
     usernameRequired: "اسم المستخدم مطلوب",
     usernameTooShort: "يجب أن يكون اسم المستخدم 3 أحرف على الأقل",
     usernameTooLong: "يجب أن يكون اسم المستخدم أقل من 20 حرفاً",
-    usernameInvalid: "اسم المستخدم يمكن أن يحتوي على حروف وأرقام وشرطات سفلية فقط",
+    usernameInvalid:
+      "اسم المستخدم يمكن أن يحتوي على حروف وأرقام وشرطات سفلية فقط",
     usernameNoSpaces: "اسم المستخدم لا يمكن أن يحتوي على مسافات",
     emailInvalid: "يرجى إدخال بريد إلكتروني صحيح",
     passwordTooShort: "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
@@ -66,7 +68,8 @@ export const ar: TranslationKeys = {
     allFieldsRequired: "جميع الحقول مطلوبة",
 
     // Error messages
-    invalidCredentials: "البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة",
+    invalidCredentials:
+      "البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة",
     userExists: "يوجد مستخدم بهذا البريد الإلكتروني أو اسم المستخدم",
     loginFailed: "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
     registerFailed: "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.",
@@ -161,5 +164,38 @@ export const ar: TranslationKeys = {
     mySubscriptions: "اشتراكاتي",
     freePlan: "الخطة المجانية",
     account: "الحساب",
+  },
+
+  // Saved Routes
+  savedRoutes: {
+    title: "المسارات المحفوظة",
+    noRoutes: "لا توجد مسارات محفوظة بعد",
+    noRoutesDescription: "ابدأ تسجيل المسارات لرؤيتها هنا",
+    routeName: "اسم المسار",
+    distance: "المسافة",
+    duration: "المدة",
+    dateSaved: "تاريخ الحفظ",
+    averageSpeed: "السرعة المتوسطة",
+    startLocation: "موقع البداية",
+    endLocation: "موقع النهاية",
+    deleteRoute: "حذف المسار",
+    deleteConfirm: "هل أنت متأكد أنك تريد حذف هذا المسار؟",
+    deleteSuccess: "تم حذف المسار بنجاح",
+    deleteFailed: "فشل حذف المسار",
+    viewFullMap: "عرض الخريطة الكاملة",
+    startFromRoute: "البدء من هذا المسار",
+    points: "النقاط",
+    description: "الوصف",
+    noDescription: "لا يوجد وصف",
+    routeType: "نوع المسار",
+    startTime: "وقت البداية",
+    // Route types
+    routeTypes: {
+      Running: "جري",
+      Cycling: "دراجة",
+      Walking: "مشي",
+      Hiking: "تنزه",
+      Other: "أخرى",
+    },
   },
 };
