@@ -254,7 +254,12 @@ const HomePage = () => {
         {/* Header - Styled with Darbna Brand Colors */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <SOSHeaderButton onPress={() => setSOSModalVisible(true)} />
+            <SOSHeaderButton
+              onPress={() => {
+                console.log("SOSHeaderButton pressed");
+                setSOSModalVisible(true);
+              }}
+            />
           </View>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Map</Text>
@@ -433,7 +438,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   headerCenter: {
-    position: "absolute",
+    // position: "absolute",
     left: 0,
     right: 0,
     alignItems: "center",
