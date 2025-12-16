@@ -6,7 +6,6 @@ import React, {
   ReactNode,
 } from "react";
 import { io, Socket } from "socket.io-client";
-import axios from "axios";
 import Constants from "expo-constants";
 import {
   IMapContext,
@@ -16,31 +15,30 @@ import {
   CreatePinData,
 } from "../types/map";
 import { getCurrentUser } from "../api/user";
-import api from "../api/index";
-
-// Helper to get the correct base URL for development (same as api/index.ts)
-const getBaseUrl = () => {
-  const debuggerHost = Constants.expoConfig?.hostUri;
-  const localhost = debuggerHost?.split(":")[0];
-
-  if (localhost) {
-    // Running on physical device or emulator via Expo Go
-    return `http://${localhost}:8000/api`;
-  }
-
-  // Fallback for iOS Simulator or other cases
-  return "http://localhost:8000/api";
-};
-
-const BASE_URL = getBaseUrl();
-const MAP_API_URL = `${BASE_URL}/map`;
+import { BASE_URL } from "../api/index";
+import { getAllMapData } from "../api/map";
+import {
+  getAllPins,
+  getPinsByUserId,
+  createPin as createPinAPI,
+  updatePin as updatePinAPI,
+  deletePin as deletePinAPI,
+} from "../api/pins";
+import { useAuth } from "./AuthContext";
 
 const MapContext = createContext<IMapContext | undefined>(undefined);
+
+// Helper function to validate MongoDB ObjectId format
+// MongoDB ObjectIds are 24-character hexadecimal strings
+const isValidObjectId = (id: string): boolean => {
+  return /^[0-9a-fA-F]{24}$/.test(id);
+};
 
 export const MapProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [currentUser, setCurrentUser] = useState<{ _id: string } | null>(null);
+  // Use user from AuthContext instead of maintaining separate state
+  const { user } = useAuth();
   const [state, setState] = useState<IMapState>({
     locations: [],
     routes: [],
@@ -53,47 +51,121 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
   // Function to fetch initial data from the backend
   const fetchInitialData = async () => {
     try {
-      console.log("🗺️ Fetching map data from:", MAP_API_URL);
-      const [routesRes, poisRes, heatmapRes] = await Promise.all([
-        axios.get(`${MAP_API_URL}/routes`),
-        axios.get(`${MAP_API_URL}/pois`),
-        axios.get(`${MAP_API_URL}/heatmap`),
-      ]);
+      console.log("🗺️ Fetching map data...");
+
+      // Fetch map data (routes, pois, heatmap)
+      const mapData = await getAllMapData();
 
       // Fetch pinned places
       let pinnedPlaces: IPinnedPlace[] = [];
       try {
         // Fetch all pins
-        const allPinsRes = await axios.get(`${BASE_URL}/pins`);
-        const allPins: IPinnedPlace[] = allPinsRes.data || [];
+        const allPins = await getAllPins();
+        console.log("📌 Fetched all pins:", allPins.length);
 
         // Filter public pins (visible to all)
         const publicPins = allPins.filter((pin) => pin.isPublic === true);
+        console.log("📌 Public pins:", publicPins.length);
 
         // If user is authenticated, also get their private pins
-        if (currentUser?._id) {
-          try {
-            const userPinsRes = await axios.get(
-              `${BASE_URL}/pins/user/${currentUser._id}`
+        if (user?._id) {
+          console.log(
+            "👤 User authenticated, fetching private pins for:",
+            user._id
+          );
+
+          // Only call API if user ID is a valid MongoDB ObjectId
+          // Skip API call for mock/test users with invalid ObjectIds
+          if (isValidObjectId(user._id)) {
+            try {
+              const userPins = await getPinsByUserId(user._id);
+              console.log("📌 User pins fetched:", userPins.length);
+
+              const privatePins = userPins.filter(
+                (pin) => pin.isPublic === false
+              );
+              console.log("📌 Private pins from API:", privatePins.length);
+
+              // Also check allPins for any private pins that belong to this user (fallback)
+              const privatePinsFromAll = allPins.filter(
+                (pin) => pin.isPublic === false && pin.userId?._id === user._id
+              );
+              console.log(
+                "📌 Private pins from allPins:",
+                privatePinsFromAll.length
+              );
+
+              // Combine all private pins (from API and allPins), avoiding duplicates
+              const allPrivatePins = [...privatePins, ...privatePinsFromAll];
+              const privatePinMap = new Map();
+              allPrivatePins.forEach((pin) => {
+                privatePinMap.set(pin._id, pin);
+              });
+              const uniquePrivatePins = Array.from(privatePinMap.values());
+
+              // Combine public pins and user's private pins, avoiding duplicates
+              const pinMap = new Map();
+              [...publicPins, ...uniquePrivatePins].forEach((pin) => {
+                pinMap.set(pin._id, pin);
+              });
+              pinnedPlaces = Array.from(pinMap.values());
+              console.log("📌 Total pins to display:", pinnedPlaces.length);
+            } catch (userPinsError: any) {
+              // If user pins fetch fails with an error (not 404), try fallback
+              console.warn(
+                "⚠️ Failed to fetch user pins via API:",
+                userPinsError
+              );
+
+              // Fallback: filter private pins from allPins if they belong to the user
+              const privatePinsFromAll = allPins.filter(
+                (pin) => pin.isPublic === false && pin.userId?._id === user._id
+              );
+              console.log(
+                "📌 Private pins from allPins (fallback):",
+                privatePinsFromAll.length
+              );
+
+              // Combine public pins and user's private pins
+              const pinMap = new Map();
+              [...publicPins, ...privatePinsFromAll].forEach((pin) => {
+                pinMap.set(pin._id, pin);
+              });
+              pinnedPlaces = Array.from(pinMap.values());
+              console.log("📌 Total pins (fallback):", pinnedPlaces.length);
+            }
+          } else {
+            // User ID is not a valid MongoDB ObjectId (e.g., mock/test user)
+            console.log(
+              "⚠️ User ID is not a valid MongoDB ObjectId, skipping API call"
             );
-            const userPins: IPinnedPlace[] = userPinsRes.data || [];
-            const privatePins = userPins.filter(
-              (pin) => pin.isPublic === false
+            console.log(
+              "📌 Using fallback: filtering private pins from allPins"
             );
 
-            // Combine public pins and user's private pins, avoiding duplicates
-            const pinMap = new Map<string, IPinnedPlace>();
-            [...publicPins, ...privatePins].forEach((pin) => {
+            // Fallback: filter private pins from allPins if they belong to the user
+            const privatePinsFromAll = allPins.filter(
+              (pin) => pin.isPublic === false && pin.userId?._id === user._id
+            );
+            console.log(
+              "📌 Private pins from allPins:",
+              privatePinsFromAll.length
+            );
+
+            // Combine public pins and user's private pins
+            const pinMap = new Map();
+            [...publicPins, ...privatePinsFromAll].forEach((pin) => {
               pinMap.set(pin._id, pin);
             });
             pinnedPlaces = Array.from(pinMap.values());
-          } catch (userPinsError) {
-            // If user pins fetch fails, just use public pins
-            console.warn("⚠️ Failed to fetch user pins:", userPinsError);
-            pinnedPlaces = publicPins;
+            console.log(
+              "📌 Total pins (using allPins only):",
+              pinnedPlaces.length
+            );
           }
         } else {
           // No user authenticated, only show public pins
+          console.log("👤 No user authenticated, showing only public pins");
           pinnedPlaces = publicPins;
         }
       } catch (pinsError) {
@@ -101,11 +173,18 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
         // Continue without pins
       }
 
+      // Transform heatmap data to match IMapState format
+      const heatmapData = mapData.heatmapData.map((point) => ({
+        lng: point.location.coordinates[0],
+        lat: point.location.coordinates[1],
+        weight: point.intensity || 1,
+      }));
+
       setState((prevState) => ({
         ...prevState,
-        routes: routesRes.data,
-        pois: poisRes.data,
-        heatmapData: heatmapRes.data,
+        routes: mapData.routes,
+        pois: mapData.pois,
+        heatmapData,
         pinnedPlaces,
       }));
       console.log("✅ Map data fetched successfully");
@@ -114,8 +193,7 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
         console.warn("⚠️ Map API responded with error:", error.response.status);
       } else if (error.request) {
         console.warn(
-          "⚠️ No response from map API. Is the backend server running?",
-          MAP_API_URL
+          "⚠️ No response from map API. Is the backend server running?"
         );
       } else {
         console.error("❌ Error setting up map data request:", error.message);
@@ -135,15 +213,14 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
 
   // Function to create a new pin
   const createPin = async (pinData: CreatePinData) => {
-    // Use userId from pinData if provided (from AuthContext), otherwise try currentUser or fetch
-    let userId = pinData.userId || currentUser?._id;
+    // Use userId from pinData if provided (from AuthContext), otherwise use user from AuthContext
+    let userId = pinData.userId || user?._id;
 
     if (!userId) {
       try {
         console.log("🔄 User not set, fetching user...");
-        const user = await getCurrentUser();
-        setCurrentUser(user);
-        userId = user._id;
+        const fetchedUser = await getCurrentUser();
+        userId = fetchedUser._id;
         if (!userId) {
           throw new Error("User not authenticated");
         }
@@ -155,115 +232,69 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
       }
     }
 
-    const formData = new FormData();
-    formData.append("title", pinData.title);
-    formData.append("category", pinData.category);
-    formData.append("isPublic", pinData.isPublic.toString());
-    formData.append("userId", userId);
-
-    // Description is optional
-    if (pinData.description) {
-      formData.append("description", pinData.description);
-    }
-
-    // Location - backend accepts both formats, using separate lat/lng for better compatibility
-    formData.append("latitude", pinData.location.latitude.toString());
-    formData.append("longitude", pinData.location.longitude.toString());
-
-    // Image is optional - only append if provided
-    if (pinData.image) {
-      const imageUri = pinData.image.uri;
-      const filename = imageUri.split("/").pop() || "image.jpg";
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : "image/jpeg";
-
-      formData.append("image", {
-        uri: imageUri,
-        type: type,
-        name: filename,
-      } as any);
+    // Validate that userId is a valid MongoDB ObjectId
+    if (!isValidObjectId(userId)) {
+      console.error("❌ Invalid user ID format:", userId);
+      throw new Error(
+        "Invalid user ID format. Cannot create pin with test/mock user. Please log in with a real account."
+      );
     }
 
     try {
-      console.log("📌 Creating pin with data:", {
-        title: pinData.title,
-        category: pinData.category,
-        isPublic: pinData.isPublic,
-        location: pinData.location,
-        hasImage: !!pinData.image,
-        userId: userId,
-      });
-
-      const response = await api.post("/pins", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        transformRequest: (data) => {
-          return data; // Let axios handle FormData
-        },
-      });
-
-      console.log("✅ Pin created successfully:", response.data);
+      // Use the API function from api/pins.ts
+      const newPin = await createPinAPI(pinData, userId);
 
       // Add new pin to state
       setState((prevState) => ({
         ...prevState,
-        pinnedPlaces: [...prevState.pinnedPlaces, response.data],
+        pinnedPlaces: [...prevState.pinnedPlaces, newPin],
       }));
 
-      return response.data;
-    } catch (error: any) {
-      console.error("❌ Error creating pin:", error);
-      if (error.response) {
-        console.error(
-          "❌ Error response data:",
-          JSON.stringify(error.response.data, null, 2)
-        );
-        console.error("❌ Error status:", error.response.status);
-        console.error("❌ Error headers:", error.response.headers);
-
-        // Create a more descriptive error message
-        const errorMessage =
-          error.response.data?.message ||
-          `Server error: ${error.response.status} - ${JSON.stringify(
-            error.response.data
-          )}`;
-        const enhancedError = new Error(errorMessage);
-        (enhancedError as any).response = error.response;
-        throw enhancedError;
-      } else if (error.request) {
-        console.error("❌ No response received:", error.request);
-        throw new Error(
-          "Network error: No response from server. Please check your connection."
-        );
-      } else {
-        console.error("❌ Error message:", error.message);
-        throw error;
-      }
+      return newPin;
+    } catch (error) {
+      // Error is already logged in the API function
+      throw error;
     }
   };
 
-  // Fetch current user on mount and periodically
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await getCurrentUser();
-        setCurrentUser(user);
-        console.log("✅ User fetched in MapContext:", user._id);
-      } catch (error) {
-        // User not authenticated or token invalid
-        console.warn("⚠️ Failed to fetch user in MapContext:", error);
-        setCurrentUser(null);
-      }
-    };
+  // Function to update a pin
+  const updatePin = async (
+    pinId: string,
+    pinData: Partial<CreatePinData>
+  ): Promise<IPinnedPlace> => {
+    try {
+      const updatedPin = await updatePinAPI(pinId, pinData);
 
-    fetchUser();
+      // Update pin in state
+      setState((prevState) => ({
+        ...prevState,
+        pinnedPlaces: prevState.pinnedPlaces.map((pin) =>
+          pin._id === pinId ? updatedPin : pin
+        ),
+      }));
 
-    // Also try to fetch user periodically in case auth state changes
-    const interval = setInterval(fetchUser, 5000);
+      return updatedPin;
+    } catch (error) {
+      console.error("Error updating pin:", error);
+      throw error;
+    }
+  };
 
-    return () => clearInterval(interval);
-  }, []);
+  // Function to delete a pin
+  const deletePin = async (pinId: string): Promise<void> => {
+    try {
+      await deletePinAPI(pinId);
+
+      // Remove pin from state
+      setState((prevState) => ({
+        ...prevState,
+        pinnedPlaces: prevState.pinnedPlaces.filter((pin) => pin._id !== pinId),
+      }));
+    } catch (error) {
+      console.error("Error deleting pin:", error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     // Initialize Socket.IO connection (use base URL without /api)
@@ -286,11 +317,18 @@ export const MapProvider: React.FC<{ children: ReactNode }> = ({
     return () => {
       newSocket.disconnect();
     };
-  }, [currentUser?._id]); // Re-fetch when user changes
+  }, [user?._id]); // Re-fetch when user changes
 
   return (
     <MapContext.Provider
-      value={{ ...state, fetchInitialData, sendLocationUpdate, createPin }}
+      value={{
+        ...state,
+        fetchInitialData,
+        sendLocationUpdate,
+        createPin,
+        updatePin,
+        deletePin,
+      }}
     >
       {children}
     </MapContext.Provider>

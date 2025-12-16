@@ -78,31 +78,60 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [isPublic, setIsPublic] = useState(true);
-  const [image, setImage] = useState<any>(null);
+  const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
+  const MAX_IMAGES = 4;
+
   const pickImage = async () => {
+    // Check if we've reached the max
+    if (images.length >= MAX_IMAGES) {
+      Alert.alert(
+        "Maximum Images",
+        `You can only add up to ${MAX_IMAGES} images per pin.`
+      );
+      return;
+    }
+
     // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
         "Permission Required",
-        "Sorry, we need camera roll permissions to add an image!"
+        "Sorry, we need camera roll permissions to add images!"
       );
       return;
     }
 
+    // Calculate how many images we can still add
+    const remainingSlots = MAX_IMAGES - images.length;
+    const allowsMultipleSelection = remainingSlots > 1;
+
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsEditing: false, // Disable editing for multiple selection
+      allowsMultipleSelection: allowsMultipleSelection,
       quality: 0.8,
+      selectionLimit: remainingSlots,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setImage(result.assets[0]);
+    if (!result.canceled && result.assets.length > 0) {
+      // Add new images to existing ones, but don't exceed MAX_IMAGES
+      const newImages = result.assets
+        .slice(0, remainingSlots)
+        .filter((asset) => asset.uri); // Ensure all images have URIs
+
+      if (newImages.length > 0) {
+        setImages([...images, ...newImages]);
+      } else {
+        Alert.alert("Error", "No valid images were selected");
+      }
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
   };
 
   const handleCreate = async () => {
@@ -132,8 +161,8 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
       if (description.trim()) {
         pinData.description = description.trim();
       }
-      if (image) {
-        pinData.image = image;
+      if (images.length > 0) {
+        pinData.images = images;
       }
 
       await onCreate(pinData);
@@ -142,7 +171,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
       setDescription("");
       setCategory("");
       setIsPublic(true);
-      setImage(null);
+      setImages([]);
       onClose();
       Alert.alert("Success", "Pin created successfully!");
     } catch (error: any) {
@@ -162,7 +191,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
       setDescription("");
       setCategory("");
       setIsPublic(true);
-      setImage(null);
+      setImages([]);
       onClose();
     }
   };
@@ -187,43 +216,61 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
           >
-            {/* Image Picker - Optional */}
-            <TouchableOpacity
-              style={styles.imagePicker}
-              onPress={pickImage}
-              disabled={loading}
-            >
-              {image ? (
-                <View style={styles.imageContainer}>
-                  <Image
-                    source={{ uri: image.uri }}
-                    style={styles.selectedImage}
-                  />
-                  <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => setImage(null)}
-                    disabled={loading}
-                  >
-                    <Ionicons
-                      name="close-circle"
-                      size={24}
-                      color={COLORS.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Ionicons
-                    name="image-outline"
-                    size={48}
-                    color={COLORS.lightText}
-                  />
-                  <Text style={styles.imagePlaceholderText}>
-                    Tap to add image (optional)
-                  </Text>
+            {/* Images Picker - Optional (up to 4 images) */}
+            <View style={styles.imagesSection}>
+              <Text style={styles.label}>
+                Images (optional) - {images.length}/{MAX_IMAGES}
+              </Text>
+
+              {/* Display selected images */}
+              {images.length > 0 && (
+                <View style={styles.imagesGrid}>
+                  {images.map((img, index) => (
+                    <View key={index} style={styles.imageContainer}>
+                      <Image
+                        source={{ uri: img.uri }}
+                        style={styles.selectedImage}
+                      />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => removeImage(index)}
+                        disabled={loading}
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={24}
+                          color={COLORS.white}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
               )}
-            </TouchableOpacity>
+
+              {/* Add image button */}
+              {images.length < MAX_IMAGES && (
+                <TouchableOpacity
+                  style={styles.imagePicker}
+                  onPress={pickImage}
+                  disabled={loading}
+                >
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={48}
+                      color={COLORS.desertOrange}
+                    />
+                    <Text style={styles.imagePlaceholderText}>
+                      {images.length === 0
+                        ? "Tap to add images (optional)"
+                        : `Add more images (${
+                            MAX_IMAGES - images.length
+                          } remaining)`}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* Title Input */}
             <View style={styles.inputContainer}>
@@ -418,15 +465,30 @@ const styles = StyleSheet.create({
     maxHeight: 500,
     paddingHorizontal: 20,
   },
-  imagePicker: {
+  imagesSection: {
     marginTop: 20,
     marginBottom: 20,
+  },
+  imagesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 12,
+  },
+  imagePicker: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  imageContainer: {
+    position: "relative",
+    width: "48%",
+    aspectRatio: 1,
     borderRadius: 12,
     overflow: "hidden",
   },
   selectedImage: {
     width: "100%",
-    height: 200,
+    height: "100%",
     resizeMode: "cover",
   },
   imagePlaceholder: {
@@ -530,9 +592,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  imageContainer: {
-    position: "relative",
   },
   removeImageButton: {
     position: "absolute",

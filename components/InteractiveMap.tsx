@@ -14,8 +14,9 @@ import { useAuth } from "../context/AuthContext";
 import { IGPSPoint } from "../types/route";
 import { BASE_URL } from "../api/index";
 import PinCreationModal from "./PinCreationModal";
-import { CreatePinData } from "../types/map";
+import { CreatePinData, IPinnedPlace } from "../types/map";
 import { Alert } from "react-native";
+import { useRouter } from "expo-router";
 
 interface InteractiveMapProps {
   userLocation: Location.LocationObject | null;
@@ -36,6 +37,7 @@ const InteractiveMap = ({
   const { locations, routes, pois, heatmapData, pinnedPlaces, createPin } =
     useMap();
   const { user } = useAuth();
+  const router = useRouter();
   const [showRoutes, setShowRoutes] = useState(true);
   const [showPois, setShowPois] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -45,6 +47,14 @@ const InteractiveMap = ({
     longitude: number;
   } | null>(null);
   const mapRef = useRef<MapView>(null);
+
+  // Handle pin marker press - navigate to detail page
+  const handlePinPress = (pin: IPinnedPlace) => {
+    router.push({
+      pathname: "/(protected)/(tabs)/home/pin-detail",
+      params: { pinId: pin._id },
+    });
+  };
 
   // Wrapper function to add userId to pin data from AuthContext
   const handleCreatePin = async (pinData: CreatePinData) => {
@@ -210,6 +220,7 @@ const InteractiveMap = ({
               title={pin.title}
               description={pin.description}
               pinColor={pin.isPublic ? "#4CAF50" : "#C46F26"}
+              onPress={() => handlePinPress(pin)}
             />
           );
         })}

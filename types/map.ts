@@ -35,7 +35,7 @@ export interface IPinnedPlace {
   _id: string;
   title: string;
   description: string;
-  image: string;
+  images: string[]; // Array of image paths (max 4)
   category: string;
   isPublic: boolean;
   userId: {
@@ -54,13 +54,14 @@ export interface IPinnedPlace {
 export interface CreatePinData {
   title: string;
   description?: string; // Optional
-  image?: any; // Optional - ImagePicker asset
+  images?: any[]; // Optional - Array of ImagePicker assets (max 4)
   category: string;
   isPublic: boolean;
   location: {
     latitude: number;
     longitude: number;
   };
+  userId?: string; // Optional - will be provided by InteractiveMap from AuthContext
 }
 
 // Defines the shape of our MapContext state
@@ -80,5 +81,7 @@ export interface IMapContext extends IMapState {
     longitude: number;
     latitude: number;
   }) => void;
-  createPin: (pinData: CreatePinData) => Promise<void>;
+  createPin: (pinData: CreatePinData) => Promise<IPinnedPlace>;
+  updatePin: (pinId: string, pinData: Partial<CreatePinData>) => Promise<IPinnedPlace>;
+  deletePin: (pinId: string) => Promise<void>;
 }
