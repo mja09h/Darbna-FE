@@ -11,9 +11,12 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { useNavigation } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
 import { IGPSPoint } from "../../../../types/route";
 import InteractiveMap from "../../../../components/InteractiveMap";
+import SOSModal from "../../../../components/SOSModal";
+import SOSHeaderButton from "../../../../components/SOSHeaderButton";
 
 // Darbna Brand Colors
 const COLORS = {
@@ -39,9 +42,11 @@ const HomePage = () => {
     saveRoute,
   } = useRouteRecording();
 
+  const navigation = useNavigation();
   const [routeName, setRouteName] = useState("");
   const [routeDescription, setRouteDescription] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSOSModalVisible, setSOSModalVisible] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
@@ -235,21 +240,26 @@ const HomePage = () => {
         {/* Header - Styled with Darbna Brand Colors */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <SOSHeaderButton onPress={() => setSOSModalVisible(true)} />
+          </View>
+          <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Map</Text>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.recordButton,
-              isRecording && styles.recordButtonActive,
-            ]}
-            onPress={isRecording ? handleStopRecording : handleStartRecording}
-          >
-            <Ionicons
-              name={isRecording ? "stop-circle" : "stop"}
-              size={28}
-              color={isRecording ? COLORS.white : COLORS.desertOrange}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                isRecording && styles.recordButtonActive,
+              ]}
+              onPress={isRecording ? handleStopRecording : handleStartRecording}
+            >
+              <Ionicons
+                name={isRecording ? "stop-circle" : "stop"}
+                size={28}
+                color={isRecording ? COLORS.white : COLORS.desertOrange}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Map */}
@@ -355,6 +365,12 @@ const HomePage = () => {
             </View>
           </View>
         </Modal>
+
+        {/* SOS Modal */}
+        <SOSModal
+          visible={isSOSModalVisible}
+          onClose={() => setSOSModalVisible(false)}
+        />
       </View>
     </SafeAreaView>
   );
@@ -384,15 +400,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
+    position: "relative",
   },
   headerLeft: {
     flex: 1,
+    alignItems: "flex-start",
+  },
+  headerCenter: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 0,
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-end",
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "700",
     color: COLORS.white,
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   recordButton: {
     padding: 10,
