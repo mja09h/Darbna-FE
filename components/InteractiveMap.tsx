@@ -6,7 +6,7 @@ import MapView, {
   UrlTile,
   PROVIDER_DEFAULT,
 } from "react-native-maps";
-import { StyleSheet, View, Button, TouchableOpacity } from "react-native";
+import { StyleSheet, View, TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useMap } from "../context/MapContext";
@@ -30,13 +30,67 @@ const InteractiveMap = ({
   currentRoute,
 }: InteractiveMapProps) => {
   const { locations, routes, pois, heatmapData } = useMap();
-  const [showRoutes, setShowRoutes] = useState(true);
-  const [showPois, setShowPois] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const mapRef = useRef<MapView>(null);
+  const [heading, setHeading] = useState<number | null>(null);
+  const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(
+    null
+  );
 
   // OpenStreetMap tile server URL via backend proxy
   const osmTileUrl = `${BASE_URL}/map/tiles/{z}/{x}/{y}.png`;
+
+  // Track device heading/compass direction
+  useEffect(() => {
+    const startHeadingTracking = async () => {
+      try {
+        // Check if heading is available
+        const hasHeading = await Location.hasServicesEnabledAsync();
+        if (!hasHeading) {
+          console.warn("Heading services not available");
+          return;
+        }
+
+        // Watch heading updates
+        headingSubscriptionRef.current = await Location.watchHeadingAsync(
+          (headingData) => {
+            if (headingData.trueHeading !== -1) {
+              setHeading(headingData.trueHeading);
+            } else if (headingData.magHeading !== -1) {
+              setHeading(headingData.magHeading);
+            }
+          }
+        );
+      } catch (error) {
+        console.error("Error starting heading tracking:", error);
+        // Try to get heading from location updates as fallback
+        if (
+          userLocation?.coords.heading !== undefined &&
+          userLocation.coords.heading !== null
+        ) {
+          setHeading(userLocation.coords.heading);
+        }
+      }
+    };
+
+    startHeadingTracking();
+
+    return () => {
+      if (headingSubscriptionRef.current) {
+        headingSubscriptionRef.current.remove();
+      }
+    };
+  }, []);
+
+  // Also check userLocation for heading as fallback
+  useEffect(() => {
+    if (
+      userLocation?.coords.heading !== undefined &&
+      userLocation.coords.heading !== null &&
+      heading === null
+    ) {
+      setHeading(userLocation.coords.heading);
+    }
+  }, [userLocation?.coords.heading]);
 
   // Center map on user location when first obtained
   useEffect(() => {
@@ -66,6 +120,13 @@ const InteractiveMap = ({
         1000
       );
     }
+  };
+
+  // Convert heading degrees to cardinal direction
+  const getCardinalDirection = (heading: number): string => {
+    const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    const index = Math.round(heading / 45) % 8;
+    return directions[index];
   };
 
   // Determine initial region based on user location or default
@@ -138,63 +199,42 @@ const InteractiveMap = ({
         )}
 
         {/* Display saved routes/paths */}
-        {showRoutes &&
-          routes.map((route) => (
-            <Polyline
-              key={route._id}
-              coordinates={route.path.coordinates.map((c) => ({
-                latitude: c[1],
-                longitude: c[0],
-              }))}
-              strokeColor="#FF0000"
-              strokeWidth={3}
-            />
-          ))}
+        {routes.map((route) => (
+          <Polyline
+            key={route._id}
+            coordinates={route.path.coordinates.map((c) => ({
+              latitude: c[1],
+              longitude: c[0],
+            }))}
+            strokeColor="#FF0000"
+            strokeWidth={3}
+          />
+        ))}
 
         {/* Display Points of Interest */}
-        {showPois &&
-          pois.map((poi) => (
-            <Marker
-              key={poi._id}
-              coordinate={{
-                latitude: poi.location.coordinates[1],
-                longitude: poi.location.coordinates[0],
-              }}
-              title={poi.name}
-              description={poi.description}
-              pinColor="blue"
-            />
-          ))}
-
-        {/* Display Heatmap Layer */}
-        {showHeatmap && heatmapData.length > 0 && (
-          <Heatmap
-            points={heatmapData.map((p) => ({
-              latitude: p.lat,
-              longitude: p.lng,
-              weight: p.weight,
-            }))}
-            opacity={0.7}
-            radius={50}
+        {pois.map((poi) => (
+          <Marker
+            key={poi._id}
+            coordinate={{
+              latitude: poi.location.coordinates[1],
+              longitude: poi.location.coordinates[0],
+            }}
+            title={poi.name}
+            description={poi.description}
+            pinColor="blue"
           />
-        )}
+        ))}
       </MapView>
 
-      {/* Layer Toggle Buttons */}
-      <View style={styles.buttonContainer}>
-        <Button
-          title={showRoutes ? "Hide Routes" : "Show Routes"}
-          onPress={() => setShowRoutes(!showRoutes)}
-        />
-        <Button
-          title={showPois ? "Hide POIs" : "Show POIs"}
-          onPress={() => setShowPois(!showPois)}
-        />
-        <Button
-          title={showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
-          onPress={() => setShowHeatmap(!showHeatmap)}
-        />
-      </View>
+      {/* Digital Compass */}
+      {heading !== null && (
+        <View style={styles.compassContainer}>
+          <Text style={styles.compassText}>
+            {String(Math.round(heading)).padStart(3, "0")}°{" "}
+            {getCardinalDirection(heading)}
+          </Text>
+        </View>
+      )}
 
       {/* My Location Button */}
       {userLocation && (
@@ -216,12 +256,27 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
-    paddingVertical: 8,
-    width: "100%",
+  compassContainer: {
+    position: "absolute",
+    top: 16,
+    alignSelf: "center",
+    zIndex: 10,
+  },
+  compassText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#3A1D1A",
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#3A1D1A",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   myLocationButton: {
     position: "absolute",

@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useNavigation } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
+import { useSettings } from "../../../../context/SettingsContext";
 import { IGPSPoint } from "../../../../types/route";
 import InteractiveMap from "../../../../components/InteractiveMap";
 import SOSModal from "../../../../components/SOSModal";
@@ -41,6 +42,7 @@ const HomePage = () => {
     addPoint,
     saveRoute,
   } = useRouteRecording();
+  const { units } = useSettings();
 
   const navigation = useNavigation();
   const [routeName, setRouteName] = useState("");
@@ -138,7 +140,7 @@ const HomePage = () => {
     };
   }, [isRecording, addPoint]);
 
-  // Update recording time every second
+  // Update recording time every second (only when actively recording)
   useEffect(() => {
     if (!isRecording || !currentRoute?.startTime) return;
 
@@ -228,10 +230,22 @@ const HomePage = () => {
   };
 
   const formatDistance = (km: number) => {
-    if (km < 1) {
-      return `${(km * 1000).toFixed(0)}m`;
+    if (units === "miles") {
+      // Convert kilometers to miles
+      const miles = km * 0.621371;
+      if (miles < 1) {
+        // Convert to feet (1 mile = 5280 feet)
+        const feet = miles * 5280;
+        return `${feet.toFixed(0)}ft`;
+      }
+      return `${miles.toFixed(2)}mi`;
+    } else {
+      // Default to kilometers
+      if (km < 1) {
+        return `${(km * 1000).toFixed(0)}m`;
+      }
+      return `${km.toFixed(2)}km`;
     }
-    return `${km.toFixed(2)}km`;
   };
 
   return (
@@ -245,21 +259,27 @@ const HomePage = () => {
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Map</Text>
           </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={[
-                styles.recordButton,
-                isRecording && styles.recordButtonActive,
-              ]}
-              onPress={isRecording ? handleStopRecording : handleStartRecording}
-            >
-              <Ionicons
-                name={isRecording ? "stop-circle" : "stop"}
-                size={28}
-                color={isRecording ? COLORS.white : COLORS.desertOrange}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[
+              styles.recordButton,
+              isRecording && styles.recordButtonActive,
+              currentRoute && !isRecording && styles.recordButtonDisabled,
+            ]}
+            onPress={isRecording ? handleStopRecording : handleStartRecording}
+            disabled={currentRoute !== null && !isRecording}
+          >
+            <Ionicons
+              name={isRecording ? "stop-circle" : "stop"}
+              size={28}
+              color={
+                currentRoute && !isRecording
+                  ? COLORS.lightText
+                  : isRecording
+                  ? COLORS.white
+                  : COLORS.desertOrange
+              }
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Map */}
@@ -269,34 +289,40 @@ const HomePage = () => {
         />
 
         {/* Recording Status Bar */}
-        {isRecording && currentRoute && (
-          <View style={styles.statusBar}>
-            <View style={styles.statusContent}>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Recording</Text>
-                <Text style={styles.statusValue}>
-                  {formatTime(recordingTime)}
-                </Text>
+        {currentRoute &&
+          (() => {
+            const isPaused = !isRecording;
+            return (
+              <View style={styles.statusBar}>
+                <View style={styles.statusContent}>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>
+                      {isPaused ? "Paused" : "Recording"}
+                    </Text>
+                    <Text style={styles.statusValue}>
+                      {formatTime(recordingTime)}
+                    </Text>
+                  </View>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Distance</Text>
+                    <Text style={styles.statusValue}>
+                      {formatDistance(currentRoute.distance)}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.pauseButton}
+                    onPress={isPaused ? resumeRecording : pauseRecording}
+                  >
+                    <Ionicons
+                      name={isPaused ? "play" : "pause"}
+                      size={20}
+                      color={COLORS.white}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Distance</Text>
-                <Text style={styles.statusValue}>
-                  {formatDistance(currentRoute.distance)}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.pauseButton}
-                onPress={isRecording ? pauseRecording : resumeRecording}
-              >
-                <Ionicons
-                  name={isRecording ? "pause" : "play"}
-                  size={20}
-                  color={COLORS.white}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+            );
+          })()}
 
         {/* Save Route Modal */}
         <Modal
@@ -434,6 +460,10 @@ const styles = StyleSheet.create({
   },
   recordButtonActive: {
     backgroundColor: COLORS.desertOrange,
+  },
+  recordButtonDisabled: {
+    backgroundColor: COLORS.sandBeige,
+    opacity: 0.6,
   },
   statusBar: {
     position: "absolute",
