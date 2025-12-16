@@ -38,12 +38,12 @@ const _layout = () => {
   }, [router]);
 
   return (
-    <MapProvider>
-      <RouteRecordingProvider>
-        <LanguageProvider>
-          <ThemeProvider>
-            <SettingsProvider>
-              <AuthProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <AuthProvider>
+            <MapProvider>
+              <RouteRecordingProvider>
                 <Stack initialRouteName="(onBoarding)">
                   <Stack.Screen
                     name="(onBoarding)"
@@ -59,12 +59,12 @@ const _layout = () => {
                   />
                   <Stack.Screen name="index" options={{ headerShown: false }} />
                 </Stack>
-              </AuthProvider>
-            </SettingsProvider>
-          </ThemeProvider>
-        </LanguageProvider>
-      </RouteRecordingProvider>
-    </MapProvider>
+              </RouteRecordingProvider>
+            </MapProvider>
+          </AuthProvider>
+        </SettingsProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 };
 
