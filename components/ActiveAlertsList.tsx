@@ -1,4 +1,3 @@
-// components/ActiveAlertsList.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -59,7 +58,7 @@ const ActiveAlertsList = () => {
   }, [fetchAlerts]);
 
   const handleHelpPress = async (alert: ISOSAlert) => {
-    const isHelping = alert.helpers.includes(user!._id);
+    const isHelping = (alert.helpers || []).includes(user!._id);
     if (isHelping) {
       Alert.alert("Cancel Help", "Are you sure?", [
         { text: "No" },
@@ -72,7 +71,9 @@ const ActiveAlertsList = () => {
                 a._id === alert._id
                   ? {
                       ...a,
-                      helpers: a.helpers.filter((id) => id !== user!._id),
+                      helpers: (a.helpers || []).filter(
+                        (id) => id !== user!._id
+                      ),
                     }
                   : a
               )
@@ -90,7 +91,7 @@ const ActiveAlertsList = () => {
             setAlerts((p) =>
               p.map((a) =>
                 a._id === alert._id
-                  ? { ...a, helpers: [...a.helpers, user!._id] }
+                  ? { ...a, helpers: [...(a.helpers || []), user!._id] }
                   : a
               )
             );
@@ -114,7 +115,7 @@ const ActiveAlertsList = () => {
       data={alerts}
       keyExtractor={(item) => item._id}
       renderItem={({ item }) => {
-        const isHelping = item.helpers.includes(user!._id);
+        const isHelping = (item.helpers || []).includes(user!._id);
         return (
           <View style={styles.alertCard}>
             <View>

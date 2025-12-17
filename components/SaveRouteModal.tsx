@@ -293,7 +293,7 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
                   disabled={isLoading}
                 >
                   <Ionicons
-                    name={!isPublic ? "lock" : "lock-open"}
+                    name={!isPublic ? "lock-closed" : "lock-open"}
                     size={20}
                     color={!isPublic ? colors.background : colors.textSecondary}
                   />

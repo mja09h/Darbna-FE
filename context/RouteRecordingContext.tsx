@@ -16,6 +16,7 @@ import {
   getUserRoutes,
   deleteRoute as deleteRouteAPI,
 } from "../api/routes";
+import api from "../api";
 
 const RouteRecordingContext = createContext<IRouteRecordingContext | undefined>(
   undefined
@@ -153,7 +154,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
           type: "LineString",
           coordinates,
         },
-        startTime: state.currentRoute.startTime,
+        startTime: state.currentRoute.startTime || new Date(),
         endTime: new Date(),
         distance: state.currentRoute.distance,
         duration: state.currentRoute.duration,
@@ -163,7 +164,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
       };
 
       try {
-        const savedRoute = await createRoute(routeData);
+        const savedRoute = await createRoute(routeData as any);
 
         // Upload screenshot if provided
         if (screenshotUri) {
@@ -182,7 +183,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
               name: filename,
             } as any);
 
-            await api.post(`/routes/${savedRoute._id}/screenshot`, formData, {
+            await api.post<any>(`/routes/${savedRoute._id}/screenshot`, formData, {
               headers: {
                 "Content-Type": "multipart/form-data",
               },

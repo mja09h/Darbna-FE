@@ -289,7 +289,7 @@ const InteractiveMap = ({
         })}
 
         {/* Display Heatmap Layer */}
-        {showHeatmap && heatmapData.length > 0 && (
+        {/* {showHeatmap && heatmapData.length > 0 && (
           <Heatmap
             points={heatmapData.map((p) => ({
               latitude: p.lat,
@@ -299,7 +299,7 @@ const InteractiveMap = ({
             opacity={0.7}
             radius={50}
           />
-        ))}
+        ))} */}
       </MapView>
 
       {/* Digital Compass */}
