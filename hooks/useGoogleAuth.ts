@@ -1,5 +1,4 @@
 import * as Google from "expo-auth-session/providers/google";
-import { makeRedirectUri } from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -52,9 +51,6 @@ export const useGoogleAuth = ({ onSuccess, onError }: UseGoogleAuthOptions) => {
         webClientId: GOOGLE_CONFIG.webClientId,
         iosClientId: GOOGLE_CONFIG.iosClientId || undefined,
         androidClientId: GOOGLE_CONFIG.androidClientId || undefined,
-        redirectUri: makeRedirectUri({
-            useProxy: true,
-        }),
     });
 
     useEffect(() => {

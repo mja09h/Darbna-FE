@@ -54,7 +54,7 @@ interface AuthContextType {
     username: string,
     email: string,
     password: string,
-    country: string
+    phone: string
   ) => Promise<void>;
   logout: () => Promise<void>;
   updateUserState: (user: User) => void;
@@ -193,7 +193,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     username: string,
     email: string,
     password: string,
-    country: string
+    phone: string
   ) => {
     setIsLoading(true);
     try {
@@ -202,7 +202,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         username,
         email,
         password,
-        country
+        phone
       );
       setUser(response.user);
 

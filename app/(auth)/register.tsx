@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
-import { getCountries } from "../../data/Countries";
+// import { getCountries } from "../../data/Countries";
 import Toast, { ToastType } from "../../components/Toast";
 import axios from "axios";
 import { useGoogleAuth } from "../../hooks/useGoogleAuth";
@@ -34,7 +34,7 @@ interface FormErrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
-  country?: string;
+  phone?: string;
 }
 
 const Register = () => {
@@ -49,9 +49,7 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const [countryModalVisible, setCountryModalVisible] = useState(false);
-  const [countrySearch, setCountrySearch] = useState("");
+  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -111,10 +109,10 @@ const Register = () => {
   });
 
   // --- Data & Helpers ---
-  const countries = getCountries(language);
-  const filteredCountries = countries.filter((country) =>
-    country.toLowerCase().includes(countrySearch.toLowerCase())
-  );
+  // const countries = getCountries(language);
+  // const filteredCountries = countries.filter((country) =>
+  //   country.toLowerCase().includes(countrySearch.toLowerCase())
+  // );
 
   // --- Validation Helpers ---
   const isValidEmail = (email: string): boolean => {
@@ -204,7 +202,7 @@ const Register = () => {
       return t.auth.passwordRequired;
     }
 
-    if (value.length < 6) {
+    if (value.length < 8) {
       return t.auth.passwordTooShort;
     }
 
@@ -227,9 +225,13 @@ const Register = () => {
     return undefined;
   };
 
-  const validateCountry = (): string | undefined => {
-    if (!selectedCountry) {
-      return t.auth.countryRequired;
+  const validatePhone = (value: string): string | undefined => {
+    if (!value) {
+      return t.auth.phoneRequired || "Phone number is required";
+    }
+    // Basic phone validation (can be improved)
+    if (value.length < 8) {
+      return t.auth.phoneTooShort || "Phone number is too short";
     }
     return undefined;
   };
@@ -252,23 +254,14 @@ const Register = () => {
     const confirmPasswordError = validateConfirmPassword(confirmPassword);
     if (confirmPasswordError) newErrors.confirmPassword = confirmPasswordError;
 
-    const countryError = validateCountry();
-    if (countryError) newErrors.country = countryError;
+    const phoneError = validatePhone(phone);
+    if (phoneError) newErrors.phone = phoneError;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   // --- Event Handlers ---
-
-  const handleSelectCountry = (country: string) => {
-    setSelectedCountry(country);
-    setCountryModalVisible(false);
-    setCountrySearch("");
-    if (errors.country) {
-      setErrors((prev) => ({ ...prev, country: undefined }));
-    }
-  };
 
   const handleRegister = async () => {
     if (!validateForm()) return;
@@ -279,7 +272,7 @@ const Register = () => {
         username.trim(),
         email.trim(),
         password,
-        selectedCountry
+        phone.trim()
       );
     } catch (error) {
       let errorMessage = t.auth.registerFailed;
@@ -347,6 +340,14 @@ const Register = () => {
     }
   };
 
+  const handlePhoneChange = (text: string) => {
+    setPhone(text);
+    if (errors.phone) {
+      const error = validatePhone(text);
+      setErrors((prev) => ({ ...prev, phone: error }));
+    }
+  };
+
   // --- Render ---
   return (
     <View style={styles.wrapper}>
@@ -390,6 +391,7 @@ const Register = () => {
               }}
               error={errors.name}
               isLoading={isLoading}
+              icon="person-outline"
             />
 
             {/* Username Input */}
@@ -407,6 +409,7 @@ const Register = () => {
               isLoading={isLoading}
               autoCapitalize="none"
               autoCorrect={false}
+              icon="at-outline"
             />
 
             {/* Email Input */}
@@ -425,6 +428,7 @@ const Register = () => {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
+              icon="mail-outline"
             />
 
             {/* Password Input */}
@@ -443,6 +447,7 @@ const Register = () => {
               isPassword
               showPassword={showPassword}
               onTogglePassword={() => setShowPassword(!showPassword)}
+              icon="lock-closed-outline"
             />
 
             {/* Confirm Password Input */}
@@ -466,32 +471,25 @@ const Register = () => {
               onTogglePassword={() =>
                 setShowConfirmPassword(!showConfirmPassword)
               }
+              icon="lock-closed-outline"
             />
 
-            {/* Country Selector */}
-            <View style={styles.inputWrapper}>
-              <TouchableOpacity
-                style={[
-                  styles.countrySelector,
-                  errors.country && styles.inputError,
-                ]}
-                onPress={() => setCountryModalVisible(true)}
-                disabled={isLoading}
-              >
-                <Text
-                  style={[
-                    styles.countrySelectorText,
-                    !selectedCountry && styles.countrySelectorPlaceholder,
-                  ]}
-                >
-                  {selectedCountry || t.auth.selectCountry}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#a89080" />
-              </TouchableOpacity>
-              {errors.country && (
-                <Text style={styles.errorText}>{errors.country}</Text>
-              )}
-            </View>
+            {/* Phone Input */}
+            <AuthInput
+              placeholder={t.auth.phone || "Phone Number"}
+              value={phone}
+              onChangeText={handlePhoneChange}
+              onBlur={() => {
+                if (phone) {
+                  const error = validatePhone(phone);
+                  setErrors((prev) => ({ ...prev, phone: error }));
+                }
+              }}
+              error={errors.phone}
+              isLoading={isLoading}
+              keyboardType="phone-pad"
+              icon="call-outline"
+            />
 
             {/* Register Button */}
             <AuthButton
@@ -544,73 +542,6 @@ const Register = () => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-
-        {/* Country Selection Modal */}
-        <Modal
-          visible={countryModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setCountryModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t.auth.selectCountry}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setCountryModalVisible(false);
-                    setCountrySearch("");
-                  }}
-                  style={styles.modalCloseButton}
-                >
-                  <Ionicons name="close" size={24} color="#a89080" />
-                </TouchableOpacity>
-              </View>
-
-              <TextInput
-                style={styles.searchInput}
-                placeholder={t.auth.searchCountry}
-                placeholderTextColor="#a89080"
-                value={countrySearch}
-                onChangeText={setCountrySearch}
-                autoFocus
-              />
-
-              <FlatList
-                data={filteredCountries}
-                keyExtractor={(item) => item}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.countryItem,
-                      selectedCountry === item && styles.countryItemSelected,
-                    ]}
-                    onPress={() => handleSelectCountry(item)}
-                  >
-                    <Text
-                      style={[
-                        styles.countryItemText,
-                        selectedCountry === item &&
-                          styles.countryItemTextSelected,
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                    {selectedCountry === item && (
-                      <Ionicons name="checkmark" size={20} color="#ad5410" />
-                    )}
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                  <Text style={styles.noResults}>
-                    {t.auth.noCountriesFound}
-                  </Text>
-                }
-              />
-            </View>
-          </View>
-        </Modal>
       </KeyboardAvoidingView>
     </View>
   );
@@ -666,24 +597,6 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: "#ff6b6b",
   },
-  countrySelector: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 2,
-    borderColor: "transparent",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  countrySelectorText: {
-    fontSize: 16,
-    color: "#f5e6d3",
-  },
-  countrySelectorPlaceholder: {
-    color: "#a89080",
-  },
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -719,72 +632,5 @@ const styles = StyleSheet.create({
     color: "#ad5410",
     fontSize: 15,
     fontWeight: "bold",
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: "#2c120c",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: "80%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(168, 144, 128, 0.2)",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#f5e6d3",
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  searchInput: {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: "#f5e6d3",
-    marginVertical: 16,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  countryItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 4,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  countryItemSelected: {
-    backgroundColor: "rgba(173, 84, 16, 0.2)",
-  },
-  countryItemText: {
-    fontSize: 16,
-    color: "#f5e6d3",
-  },
-  countryItemTextSelected: {
-    color: "#ad5410",
-    fontWeight: "600",
-  },
-  noResults: {
-    color: "#a89080",
-    fontSize: 16,
-    textAlign: "center",
-    marginTop: 20,
   },
 });

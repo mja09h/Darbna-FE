@@ -87,10 +87,10 @@ const register = async (
   username: string,
   email: string,
   password: string,
-  country: string
+  phone: string
 ): Promise<AuthResponse> => {
   try {
-    if (!name || !username || !email || !password || !country) {
+    if (!name || !username || !email || !password || !phone) {
       throw new Error("All fields are required");
     }
 
@@ -101,7 +101,7 @@ const register = async (
       username,
       email,
       password,
-      country,
+      phone,
     });
 
     // Check if the response includes a token (AuthResponse)
