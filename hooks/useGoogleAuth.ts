@@ -1,20 +1,41 @@
 import * as Google from "expo-auth-session/providers/google";
+import { makeRedirectUri } from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect } from "react";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Get Google OAuth Client IDs from environment variables
+// These are loaded from .env file via app.config.js and exposed through Constants.expoConfig.extra
+const getGoogleConfig = () => {
+    const extra = Constants.expoConfig?.extra || {};
 
-const GOOGLE_CONFIG = {
-    // Web Client ID (required for all platforms)
-    webClientId: "956480809434-gc2alto3oma2clc1u8svqp0q0ondu3mo.apps.googleusercontent.com",
-    // iOS Client ID (required for iOS)
-    iosClientId: "956480809434-quih9810ccvcd6lsgb063d66c1hl6isk.apps.googleusercontent.com",
-    // Android Client ID (required for Android)
-    androidClientId: "956480809434-dju2cvs1u7v329ncbfmb8qo47mr4oqbc.apps.googleusercontent.com",
+    const webClientId = extra.webClientId || "";
+    const iosClientId = extra.iosClientId || "";
+    const androidClientId = extra.androidClientId || "";
+
+    // Validate that all required client IDs are present
+    if (!webClientId) {
+        console.error("❌ GOOGLE_OAUTH_ERROR: WebClientID is missing from environment variables");
+    }
+    if (!iosClientId) {
+        console.warn("⚠️ GOOGLE_OAUTH_WARNING: IosClientID is missing from environment variables");
+    }
+    if (!androidClientId) {
+        console.warn("⚠️ GOOGLE_OAUTH_WARNING: AndroidClientID is missing from environment variables");
+    }
+
+    return {
+        webClientId,
+        iosClientId,
+        androidClientId,
+    };
 };
+
+const GOOGLE_CONFIG = getGoogleConfig();
 
 interface UseGoogleAuthOptions {
     onSuccess: (idToken: string, accessToken: string | null) => Promise<void>;
@@ -22,10 +43,18 @@ interface UseGoogleAuthOptions {
 }
 
 export const useGoogleAuth = ({ onSuccess, onError }: UseGoogleAuthOptions) => {
+    // Validate configuration before creating auth request
+    if (!GOOGLE_CONFIG.webClientId) {
+        console.error("❌ Google OAuth: WebClientID is required but not configured");
+    }
+
     const [request, response, promptAsync] = Google.useAuthRequest({
         webClientId: GOOGLE_CONFIG.webClientId,
-        iosClientId: GOOGLE_CONFIG.iosClientId,
-        androidClientId: GOOGLE_CONFIG.androidClientId,
+        iosClientId: GOOGLE_CONFIG.iosClientId || undefined,
+        androidClientId: GOOGLE_CONFIG.androidClientId || undefined,
+        redirectUri: makeRedirectUri({
+            useProxy: true,
+        }),
     });
 
     useEffect(() => {

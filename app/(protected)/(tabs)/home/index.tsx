@@ -7,6 +7,7 @@ import {
   Alert,
   SafeAreaView,
   TextInput,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -18,7 +19,6 @@ import InteractiveMap from "../../../../components/InteractiveMap";
 import SOSModal from "../../../../components/SOSModal";
 import SOSHeaderButton from "../../../../components/SOSHeaderButton";
 import SaveRouteModal from "../../../../components/SaveRouteModal";
-
 
 // Darbna Brand Colors
 const COLORS = {
@@ -48,8 +48,14 @@ const HomePage = () => {
 
   const navigation = useNavigation();
   const [routeName, setRouteName] = useState("");
+  const [routeDescription, setRouteDescription] = useState("");
+  const [screenshotUri, setScreenshotUri] = useState<string | undefined>(
+    undefined
+  );
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSOSModalVisible, setSOSModalVisible] = useState(false);
+  const [showRouteNameModal, setShowRouteNameModal] = useState(false);
+  const [tempRouteName, setTempRouteName] = useState("");
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
@@ -58,8 +64,6 @@ const HomePage = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [userLocation, setUserLocation] =
     useState<Location.LocationObject | null>(null);
-  const [screenshotUri, setScreenshotUri] = useState<string | undefined>(undefined);
-  const [routeDescription, setRouteDescription] = useState("");
 
   // Request location permissions and start tracking user location
   useEffect(() => {
@@ -158,28 +162,18 @@ const HomePage = () => {
   }, [isRecording, currentRoute?.startTime]);
 
   const handleStartRecording = () => {
-    Alert.prompt(
-      "Route Name",
-      "Enter a name for this route:",
-      [
-        {
-          text: "Cancel",
-          onPress: () => {},
-          style: "cancel",
-        },
-        {
-          text: "Start",
-          onPress: (name?: string) => {
-            if (name && name.trim()) {
-              startRecording(name.trim());
-              setRouteName(name.trim());
-              setRecordingTime(0);
-            }
-          },
-        },
-      ],
-      "plain-text"
-    );
+    setTempRouteName("");
+    setShowRouteNameModal(true);
+  };
+
+  const handleConfirmRouteName = () => {
+    if (tempRouteName && tempRouteName.trim()) {
+      startRecording(tempRouteName.trim());
+      setRouteName(tempRouteName.trim());
+      setRecordingTime(0);
+      setShowRouteNameModal(false);
+      setTempRouteName("");
+    }
   };
 
   const handleStopRecording = async () => {
@@ -190,7 +184,7 @@ const HomePage = () => {
           await stopRecording();
           setRouteName("");
           setRecordingTime(0);
-          setScreenshotUri(undefined); 
+          setScreenshotUri(undefined);
         },
         style: "destructive",
       },
@@ -200,7 +194,7 @@ const HomePage = () => {
           // Capture screenshot of the map if possible
           // Note: For now, we'll skip screenshot capture as it requires react-native-view-shot
           // You can add it later by wrapping the map in a View with a ref
-          setScreenshotUri(undefined); 
+          setScreenshotUri(undefined);
           setShowSaveModal(true);
         },
       },
@@ -228,6 +222,7 @@ const HomePage = () => {
       Alert.alert("Success", "Route saved successfully!");
       setShowSaveModal(false);
       setRouteName("");
+      setRouteDescription("");
       setRecordingTime(0);
       setScreenshotUri(undefined);
 
@@ -381,17 +376,58 @@ const HomePage = () => {
             );
           })()}
 
-        {/* Save Route Modal */}
-        <SaveRouteModal 
-          visible={showSaveModal}
-          routeName={routeName}
-          distance={currentRoute?.distance || 0}
-          duration={recordingTime}
-          screenshotUri={screenshotUri}
-          onSave={handleSaveRoute}
-          onCancel={() => setShowSaveModal(false)}
-        />
+        {/* Route Name Input Modal */}
+        <Modal
+          visible={showRouteNameModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowRouteNameModal(false);
+            setTempRouteName("");
+          }}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Route Name</Text>
+              <Text style={styles.modalSubtitle}>
+                Enter a name for this route:
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="My Route"
+                value={tempRouteName}
+                onChangeText={setTempRouteName}
+                placeholderTextColor={COLORS.lightText}
+                autoFocus={true}
+                onSubmitEditing={handleConfirmRouteName}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setShowRouteNameModal(false);
+                    setTempRouteName("");
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    styles.saveButton,
+                    !tempRouteName.trim() && styles.modalButtonDisabled,
+                  ]}
+                  onPress={handleConfirmRouteName}
+                  disabled={!tempRouteName.trim()}
+                >
+                  <Text style={styles.modalButtonText}>Start</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
+        {/* Save Route Modal */}
         <SaveRouteModal
           visible={showSaveModal}
           routeName={routeName}
@@ -516,6 +552,97 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.sandBeige,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: COLORS.text,
+    backgroundColor: COLORS.offWhiteDesert,
+    marginBottom: 16,
+  },
+  descriptionInput: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  routeStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.offWhiteDesert,
+    borderRadius: 12,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.lightText,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    color: COLORS.desertOrange,
+    fontWeight: "700",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: COLORS.sandBeige,
+  },
+  saveButton: {
+    backgroundColor: COLORS.desertOrange,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginBottom: 16,
+    textAlign: "center",
   },
 });
 

@@ -43,9 +43,22 @@ const login = async (
       throw new Error("Identifier and password are required");
     }
 
+    // Log the request for debugging (without password)
+    if (__DEV__) {
+      console.log("🔐 Login attempt:", {
+        identifier: identifier,
+        identifierLength: identifier.length,
+        passwordLength: password.length,
+        hasWhitespace: {
+          identifier: identifier !== identifier.trim(),
+          password: password !== password.trim(),
+        },
+      });
+    }
+
     const response = await api.post<AuthResponse>("/users/login", {
-      identifier,
-      password,
+      identifier: identifier.trim(),
+      password: password,
     });
 
     if (response.data.success === false) {
@@ -54,8 +67,16 @@ const login = async (
 
     await setToken(response.data.token);
     return response.data;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    // Enhanced error logging
+    if (__DEV__) {
+      console.error("❌ Login error:", {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+      });
+    }
     throw error;
   }
 };
