@@ -90,7 +90,12 @@ const PinDetailPage = () => {
   const MAX_IMAGES = 4;
 
   // Check if user owns this pin
-  const isOwner = user && pin && pin.userId._id === user._id;
+  const isOwner =
+    user &&
+    pin &&
+    pin.userId &&
+    typeof pin.userId === "object" &&
+    pin.userId._id === user._id;
 
   // Fetch pin data
   useEffect(() => {
@@ -566,7 +571,9 @@ const PinDetailPage = () => {
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Created by</Text>
-                    <Text style={styles.infoText}>{pin.userId.username}</Text>
+                    <Text style={styles.infoText}>
+                      {pin.userId?.username || "Unknown"}
+                    </Text>
                   </View>
                 </View>
 
