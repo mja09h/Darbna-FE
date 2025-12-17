@@ -17,6 +17,11 @@ import {
 } from "../api/auth";
 import { getToken, removeToken } from "../api/storage";
 import { getCurrentUser } from "../api/user";
+import socket from "../api/socket";
+import {
+  registerForPushNotificationsAsync,
+  savePushToken,
+} from "../api/notification";
 
 // Development flag to bypass authentication for testing
 // Set to false to re-enable authentication
@@ -104,6 +109,42 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [isAuthenticated, segments, isLoading]);
 
+  // Manage socket connection based on authentication status
+  useEffect(() => {
+    const manageSocketConnection = async () => {
+      // Skip socket authentication when BYPASS_AUTH is enabled
+      if (BYPASS_AUTH) {
+        if (!socket.connected) {
+          // TEMPORARY FIX: Provide dummy token to satisfy backend auth requirement
+          // TODO: Remove this when re-enabling authentication
+          socket.auth = { token: "bypass-auth-token" };
+          socket.connect();
+        }
+        return;
+      }
+
+      // ORIGINAL CODE - Commented out for temporary auth bypass
+      // Uncomment this when re-enabling authentication:
+      /*
+      if (BYPASS_AUTH) {
+        if (!socket.connected) {
+          socket.connect();
+        }
+        return;
+      }
+      */
+
+      if (isAuthenticated && !socket.connected) {
+        const token = await getToken();
+        socket.auth = { token };
+        socket.connect();
+      } else if (!isAuthenticated && socket.connected) {
+        socket.disconnect();
+      }
+    };
+    manageSocketConnection();
+  }, [isAuthenticated]);
+
   const checkAuthStatus = async () => {
     // Bypass authentication for testing
     if (BYPASS_AUTH) {
@@ -132,6 +173,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response: AuthResponse = await apiLogin(identifier, password);
       setUser(response.user);
+
+      // Register and save push notification token
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await savePushToken(token);
+      }
+
       router.replace("/(protected)/(tabs)/home");
     } catch (error) {
       throw error;
@@ -157,6 +205,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         country
       );
       setUser(response.user);
+
+      // Register and save push notification token
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await savePushToken(token);
+      }
+
       router.replace("/(protected)/(tabs)/home");
     } catch (error) {
       throw error;
@@ -170,6 +225,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       await apiLogout();
       setUser(null);
+      socket.disconnect();
       router.replace("/(auth)/login");
     } catch (error) {
       throw error;
@@ -183,6 +239,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response: AuthResponse = await apiGoogleAuth(idToken);
       setUser(response.user);
+
+      // Register and save push notification token
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await savePushToken(token);
+      }
+
       router.replace("/(protected)/(tabs)/home");
     } catch (error) {
       throw error;
@@ -196,6 +259,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response: AuthResponse = await apiAppleAuth(data);
       setUser(response.user);
+
+      // Register and save push notification token
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await savePushToken(token);
+      }
+
       router.replace("/(protected)/(tabs)/home");
     } catch (error) {
       throw error;
