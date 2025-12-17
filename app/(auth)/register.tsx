@@ -230,7 +230,7 @@ const Register = () => {
       return t.auth.phoneRequired || "Phone number is required";
     }
     // Basic phone validation (can be improved)
-    if (value.length < 8) {
+    if (value.length < 5) {
       return t.auth.phoneTooShort || "Phone number is too short";
     }
     return undefined;
@@ -278,12 +278,19 @@ const Register = () => {
       let errorMessage = t.auth.registerFailed;
 
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
+        const backendMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.response?.data?.msg;
+
+        if (backendMessage) {
+          errorMessage = Array.isArray(backendMessage)
+            ? backendMessage.join(", ")
+            : backendMessage;
+        } else if (error.response?.status === 400) {
           errorMessage = t.auth.userExists;
         } else if (!error.response) {
           errorMessage = t.auth.networkError;
-        } else if (error.response?.data?.message) {
-          errorMessage = error.response.data.message;
         }
       }
 
