@@ -15,6 +15,7 @@ interface AuthInputProps extends TextInputProps {
   showPassword?: boolean;
   onTogglePassword?: () => void;
   isLoading?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 const AuthInput: React.FC<AuthInputProps> = ({
@@ -24,16 +25,23 @@ const AuthInput: React.FC<AuthInputProps> = ({
   onTogglePassword,
   isLoading,
   style,
+  icon,
   ...props
 }) => {
   return (
     <View style={styles.inputWrapper}>
       <View style={styles.inputContainer}>
+        {icon && (
+          <View style={styles.iconContainer}>
+            <Ionicons name={icon} size={20} color="#a89080" />
+          </View>
+        )}
         <TextInput
           style={[
             styles.input,
             error && styles.inputError,
             isPassword && styles.passwordInput,
+            icon && styles.inputWithIcon,
             style,
           ]}
           placeholderTextColor="#a89080"
@@ -76,6 +84,17 @@ const styles = StyleSheet.create({
     color: "#f5e6d3",
     borderWidth: 2,
     borderColor: "transparent",
+  },
+  inputWithIcon: {
+    paddingLeft: 50,
+  },
+  iconContainer: {
+    position: "absolute",
+    left: 20,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    zIndex: 1,
   },
   passwordInput: {
     paddingRight: 50,

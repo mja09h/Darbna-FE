@@ -110,7 +110,7 @@ const Login = () => {
       return t.auth.passwordRequired;
     }
 
-    if (value.length < 6) {
+    if (value.length < 8) {
       return t.auth.passwordTooShort;
     }
 
