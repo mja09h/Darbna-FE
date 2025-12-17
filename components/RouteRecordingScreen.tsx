@@ -89,7 +89,9 @@ const RouteRecordingScreen = () => {
 
   // Update recording time every second
   useEffect(() => {
-    if (!isRecording || !currentRoute?.startTime) return;
+    if (!isRecording || !currentRoute?.startTime) {
+      return;
+    }
 
     const interval = setInterval(() => {
       const elapsed = Math.floor(
@@ -98,8 +100,17 @@ const RouteRecordingScreen = () => {
       setRecordingTime(elapsed);
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [isRecording, currentRoute?.startTime]);
+
+  // Reset timer when recording stops
+  useEffect(() => {
+    if (!isRecording) {
+      setRecordingTime(0);
+    }
+  }, [isRecording]);
 
   const handleStartRecording = () => {
     Alert.prompt(
@@ -155,11 +166,15 @@ const RouteRecordingScreen = () => {
 
     try {
       await saveRoute(routeName, routeDescription, false, "Running");
-      Alert.alert("Success", "Route saved successfully!");
+
+      // Stop recording and reset state/timer
+      await stopRecording();
+      setRecordingTime(0);
       setShowSaveModal(false);
       setRouteName("");
       setRouteDescription("");
-      setRecordingTime(0);
+
+      Alert.alert("Success", "Route saved successfully!");
     } catch (error: any) {
       // Handle network errors gracefully
       if (

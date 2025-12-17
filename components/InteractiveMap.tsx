@@ -268,8 +268,14 @@ const InteractiveMap = ({
         {/* Display Pinned Places */}
         {pinnedPlaces.map((pin) => {
           // Filter: show if public OR if it's the user's own pin
-          const shouldShow =
-            pin.isPublic || (user && pin.userId._id === user._id);
+          // Handle case where userId might be null/undefined (e.g. deleted user)
+          const isOwner =
+            user &&
+            pin.userId &&
+            typeof pin.userId === "object" &&
+            pin.userId._id === user._id;
+
+          const shouldShow = pin.isPublic || isOwner;
 
           if (!shouldShow) return null;
 

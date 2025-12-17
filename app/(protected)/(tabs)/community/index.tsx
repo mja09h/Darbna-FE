@@ -18,6 +18,8 @@ import { IRecordedRoute } from "../../../../types/route";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
+import { useRouteRecording } from "../../../../context/RouteRecordingContext";
+import { useAuth } from "../../../../context/AuthContext";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -33,6 +35,8 @@ const CommunityPage = () => {
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
   const { units } = useSettings();
+  const { deleteRoute } = useRouteRecording();
+  const { user } = useAuth();
 
   const [routes, setRoutes] = useState<IRecordedRoute[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +147,49 @@ const CommunityPage = () => {
     );
   };
 
+  const handleDeleteRoute = (routeId: string, routeUserId: string) => {
+    // Only allow deletion if user is the owner
+    if (!user || user._id !== routeUserId) {
+      Alert.alert(
+        t.common.error,
+        "You can only delete routes that you created."
+      );
+      return;
+    }
+
+    Alert.alert(t.common.delete, t.savedRoutes.deleteConfirm, [
+      {
+        text: t.common.cancel,
+        onPress: () => {},
+        style: "cancel",
+      },
+      {
+        text: t.common.delete,
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteRoute(routeId);
+
+            // Remove from local state
+            setRoutes((prev) => prev.filter((r) => r._id !== routeId));
+
+            Alert.alert(t.common.success, t.savedRoutes.deleteSuccess);
+
+            // Refresh routes
+            await loadPublicRoutes(1);
+          } catch (error: any) {
+            const errorMessage =
+              error?.response?.data?.message ||
+              error?.message ||
+              t.savedRoutes.deleteFailed;
+
+            Alert.alert(t.common.error, errorMessage);
+          }
+        },
+      },
+    ]);
+  };
+
   const renderRouteCard = ({ item }: { item: IRecordedRoute }) => (
     <TouchableOpacity
       style={[styles.routeCard, { backgroundColor: colors.surface }]}
@@ -214,23 +261,33 @@ const CommunityPage = () => {
           </View>
         </View>
 
-        {/* Action Button */}
-        <TouchableOpacity
-          style={[styles.viewButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            // TODO: Navigate to route detail page
-            Alert.alert("View Route", "Route detail page coming soon");
-          }}
-        >
-          <Text style={[styles.viewButtonText, { color: colors.background }]}>
-            {t.savedRoutes.viewFullMap}
-          </Text>
-          <Ionicons
-            name={isRTL ? "arrow-back" : "arrow-forward"}
-            size={14}
-            color={colors.background}
-          />
-        </TouchableOpacity>
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.viewButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              // TODO: Navigate to route detail page
+              Alert.alert("View Route", "Route detail page coming soon");
+            }}
+          >
+            <Text style={[styles.viewButtonText, { color: colors.background }]}>
+              {t.savedRoutes.viewFullMap}
+            </Text>
+            <Ionicons
+              name={isRTL ? "arrow-back" : "arrow-forward"}
+              size={14}
+              color={colors.background}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.deleteButton, { backgroundColor: "#D32F2F" }]}
+            onPress={() => handleDeleteRoute(item._id, item.userId)}
+          >
+            <Ionicons name="trash-outline" size={16} color="#fff" />
+            <Text style={styles.deleteButtonText}>{t.common.delete}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -408,6 +465,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginRight: 6,
     fontSize: 14,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  deleteButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 6,
+    fontSize: 12,
   },
   emptyContainer: {
     flex: 1,
