@@ -14,7 +14,6 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import Toast, { ToastType } from "../../components/Toast";
 import axios from "axios";
-import { useGoogleAuth } from "../../hooks/useGoogleAuth";
 import { useAppleAuth } from "../../hooks/useAppleAuth";
 
 // --- Components ---
@@ -33,14 +32,14 @@ const Login = () => {
   // --- Hooks ---
   const router = useRouter();
   const { t } = useLanguage();
-  const { login, googleLogin, appleLogin, isLoading } = useAuth();
+  const { login, appleLogin, isLoading } = useAuth();
 
   // --- Local State ---
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
+  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(
     null
   );
 
@@ -60,23 +59,6 @@ const Login = () => {
   };
 
   // --- OAuth Handlers ---
-
-  // Google Authentication
-  const { signInWithGoogle, isReady: isGoogleReady } = useGoogleAuth({
-    onSuccess: async (idToken) => {
-      setOauthLoading("google");
-      try {
-        await googleLogin(idToken);
-      } catch (error) {
-        showToast(t.auth.loginFailed, "error");
-      } finally {
-        setOauthLoading(null);
-      }
-    },
-    onError: (error) => {
-      showToast(error, "error");
-    },
-  });
 
   // Apple Authentication
   const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
@@ -361,15 +343,6 @@ const Login = () => {
 
           {/* Social Login Buttons */}
           <View style={styles.socialButtonsColumn}>
-            {/* Google Login */}
-            <SocialButton
-              title={t.auth.continueWithGoogle}
-              iconName="logo-google"
-              onPress={signInWithGoogle}
-              isLoading={oauthLoading === "google"}
-              disabled={!isGoogleReady || isLoading || !!oauthLoading}
-            />
-
             {/* Apple Login */}
             {Platform.OS === "ios" && isAppleAvailable && (
               <SocialButton

@@ -11,7 +11,6 @@ import {
   login as apiLogin,
   register as apiRegister,
   logout as apiLogout,
-  googleAuth as apiGoogleAuth,
   appleAuth as apiAppleAuth,
   AppleAuthData,
 } from "../api/auth";
@@ -58,7 +57,6 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   updateUserState: (user: User) => void;
-  googleLogin: (idToken: string) => Promise<void>;
   appleLogin: (data: AppleAuthData) => Promise<void>;
 }
 
@@ -234,26 +232,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const googleLogin = async (idToken: string) => {
-    setIsLoading(true);
-    try {
-      const response: AuthResponse = await apiGoogleAuth(idToken);
-      setUser(response.user);
-
-      // Register and save push notification token
-      const token = await registerForPushNotificationsAsync();
-      if (token) {
-        await savePushToken(token);
-      }
-
-      router.replace("/(protected)/(tabs)/home");
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const appleLogin = async (data: AppleAuthData) => {
     setIsLoading(true);
     try {
@@ -288,7 +266,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         updateUserState,
-        googleLogin,
         appleLogin,
       }}
     >

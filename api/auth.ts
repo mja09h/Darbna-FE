@@ -2,17 +2,6 @@ import api from ".";
 import { removeToken, setToken } from "./storage";
 import { User, AuthResponse } from "../types/User";
 
-// Google OAuth
-const googleAuth = async (idToken: string): Promise<AuthResponse> => {
-  try {
-    const response = await api.post<AuthResponse>("/auth/google", { idToken });
-    await setToken(response.data.token);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
 // Apple OAuth
 interface AppleAuthData {
   identityToken: string;
@@ -165,14 +154,6 @@ const resetPassword = async (
   }
 };
 
-export {
-  login,
-  register,
-  logout,
-  forgotPassword,
-  resetPassword,
-  googleAuth,
-  appleAuth,
-};
+export { login, register, logout, forgotPassword, resetPassword, appleAuth };
 
 export type { AppleAuthData };

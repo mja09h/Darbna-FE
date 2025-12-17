@@ -185,13 +185,6 @@ const AccountScreen = () => {
           "Security & Connections",
           <View>
             {renderItem(
-              "logo-google",
-              "Google Account",
-              "Not Connected",
-              () => showAlert("Info", "Google account linking coming soon"),
-              true
-            )}
-            {renderItem(
               "logo-apple",
               "Apple Account",
               "Not Connected",
