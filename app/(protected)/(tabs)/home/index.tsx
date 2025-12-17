@@ -19,7 +19,6 @@ import SOSModal from "../../../../components/SOSModal";
 import SOSHeaderButton from "../../../../components/SOSHeaderButton";
 import SaveRouteModal from "../../../../components/SaveRouteModal";
 
-
 // Darbna Brand Colors
 const COLORS = {
   desertOrange: "#C46F26",
@@ -48,6 +47,10 @@ const HomePage = () => {
 
   const navigation = useNavigation();
   const [routeName, setRouteName] = useState("");
+  const [routeDescription, setRouteDescription] = useState("");
+  const [screenshotUri, setScreenshotUri] = useState<string | undefined>(
+    undefined
+  );
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSOSModalVisible, setSOSModalVisible] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
@@ -58,8 +61,6 @@ const HomePage = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [userLocation, setUserLocation] =
     useState<Location.LocationObject | null>(null);
-  const [screenshotUri, setScreenshotUri] = useState<string | undefined>(undefined);
-  const [routeDescription, setRouteDescription] = useState("");
 
   // Request location permissions and start tracking user location
   useEffect(() => {
@@ -228,6 +229,7 @@ const HomePage = () => {
       Alert.alert("Success", "Route saved successfully!");
       setShowSaveModal(false);
       setRouteName("");
+      setRouteDescription("");
       setRecordingTime(0);
       setScreenshotUri(undefined);
 
@@ -391,16 +393,6 @@ const HomePage = () => {
           onSave={handleSaveRoute}
           onCancel={() => setShowSaveModal(false)}
         />
-
-        <SaveRouteModal
-          visible={showSaveModal}
-          routeName={routeName}
-          distance={currentRoute?.distance || 0}
-          duration={recordingTime}
-          screenshotUri={screenshotUri}
-          onSave={handleSaveRoute}
-          onCancel={() => setShowSaveModal(false)}
-        />
         {/* SOS Modal */}
         <SOSModal
           visible={isSOSModalVisible}
@@ -516,6 +508,88 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.sandBeige,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: COLORS.text,
+    backgroundColor: COLORS.offWhiteDesert,
+    marginBottom: 16,
+  },
+  descriptionInput: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  routeStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.offWhiteDesert,
+    borderRadius: 12,
+  },
+  statItem: {
+    alignItems: "center",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.lightText,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    color: COLORS.desertOrange,
+    fontWeight: "700",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: COLORS.sandBeige,
+  },
+  saveButton: {
+    backgroundColor: COLORS.desertOrange,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
   },
 });
 
