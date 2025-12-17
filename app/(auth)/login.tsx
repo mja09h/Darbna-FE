@@ -158,7 +158,31 @@ const Login = () => {
     if (!validateForm()) return;
 
     try {
-      await login(emailOrUsername.trim(), password);
+      // Ensure password doesn't have accidental leading/trailing whitespace
+      // but preserve intentional spaces in the middle
+      const trimmedPassword = password.trim();
+
+      // Normalize identifier: trim and lowercase if it's an email
+      let normalizedIdentifier = emailOrUsername.trim();
+      if (normalizedIdentifier.includes("@")) {
+        // It's an email, convert to lowercase
+        normalizedIdentifier = normalizedIdentifier.toLowerCase();
+      }
+
+      // Log for debugging
+      if (__DEV__) {
+        console.log("🔐 Attempting login with:", {
+          originalIdentifier: emailOrUsername,
+          normalizedIdentifier: normalizedIdentifier,
+          identifierLength: normalizedIdentifier.length,
+          passwordLength: trimmedPassword.length,
+          originalPasswordLength: password.length,
+          passwordHasWhitespace: password !== trimmedPassword,
+          isEmail: normalizedIdentifier.includes("@"),
+        });
+      }
+
+      await login(normalizedIdentifier, trimmedPassword);
     } catch (error: any) {
       let errorMessage = t.auth.loginFailed;
 
@@ -178,7 +202,17 @@ const Login = () => {
         }
 
         if (error.response?.status === 401 || error.response?.status === 400) {
-          errorMessage = t.auth.invalidCredentials;
+          // Try to get the actual error message from the backend
+          const backendMessage =
+            error.response?.data?.message ||
+            error.response?.data?.error ||
+            error.response?.data?.msg;
+
+          if (backendMessage) {
+            errorMessage = backendMessage;
+          } else {
+            errorMessage = t.auth.invalidCredentials;
+          }
         } else if (!error.response) {
           errorMessage = t.auth.networkError;
         } else if (error.response?.data?.message) {
@@ -186,6 +220,14 @@ const Login = () => {
         }
       } else if (error instanceof Error && error.message) {
         errorMessage = error.message;
+      }
+
+      // Log the full error for debugging
+      if (__DEV__) {
+        console.error("❌ Login failed:", {
+          errorMessage,
+          error: error?.response?.data || error?.message,
+        });
       }
 
       showToast(errorMessage, "error");

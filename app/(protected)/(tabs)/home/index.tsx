@@ -7,6 +7,7 @@ import {
   Alert,
   SafeAreaView,
   TextInput,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -53,6 +54,8 @@ const HomePage = () => {
   );
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSOSModalVisible, setSOSModalVisible] = useState(false);
+  const [showRouteNameModal, setShowRouteNameModal] = useState(false);
+  const [tempRouteName, setTempRouteName] = useState("");
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
@@ -159,28 +162,18 @@ const HomePage = () => {
   }, [isRecording, currentRoute?.startTime]);
 
   const handleStartRecording = () => {
-    Alert.prompt(
-      "Route Name",
-      "Enter a name for this route:",
-      [
-        {
-          text: "Cancel",
-          onPress: () => {},
-          style: "cancel",
-        },
-        {
-          text: "Start",
-          onPress: (name?: string) => {
-            if (name && name.trim()) {
-              startRecording(name.trim());
-              setRouteName(name.trim());
-              setRecordingTime(0);
-            }
-          },
-        },
-      ],
-      "plain-text"
-    );
+    setTempRouteName("");
+    setShowRouteNameModal(true);
+  };
+
+  const handleConfirmRouteName = () => {
+    if (tempRouteName && tempRouteName.trim()) {
+      startRecording(tempRouteName.trim());
+      setRouteName(tempRouteName.trim());
+      setRecordingTime(0);
+      setShowRouteNameModal(false);
+      setTempRouteName("");
+    }
   };
 
   const handleStopRecording = async () => {
@@ -191,7 +184,7 @@ const HomePage = () => {
           await stopRecording();
           setRouteName("");
           setRecordingTime(0);
-          setScreenshotUri(undefined); 
+          setScreenshotUri(undefined);
         },
         style: "destructive",
       },
@@ -201,7 +194,7 @@ const HomePage = () => {
           // Capture screenshot of the map if possible
           // Note: For now, we'll skip screenshot capture as it requires react-native-view-shot
           // You can add it later by wrapping the map in a View with a ref
-          setScreenshotUri(undefined); 
+          setScreenshotUri(undefined);
           setShowSaveModal(true);
         },
       },
@@ -383,8 +376,59 @@ const HomePage = () => {
             );
           })()}
 
+        {/* Route Name Input Modal */}
+        <Modal
+          visible={showRouteNameModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowRouteNameModal(false);
+            setTempRouteName("");
+          }}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Route Name</Text>
+              <Text style={styles.modalSubtitle}>
+                Enter a name for this route:
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="My Route"
+                value={tempRouteName}
+                onChangeText={setTempRouteName}
+                placeholderTextColor={COLORS.lightText}
+                autoFocus={true}
+                onSubmitEditing={handleConfirmRouteName}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setShowRouteNameModal(false);
+                    setTempRouteName("");
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    styles.saveButton,
+                    !tempRouteName.trim() && styles.modalButtonDisabled,
+                  ]}
+                  onPress={handleConfirmRouteName}
+                  disabled={!tempRouteName.trim()}
+                >
+                  <Text style={styles.modalButtonText}>Start</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
         {/* Save Route Modal */}
-        <SaveRouteModal 
+        <SaveRouteModal
           visible={showSaveModal}
           routeName={routeName}
           distance={currentRoute?.distance || 0}
@@ -590,6 +634,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.white,
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    marginBottom: 16,
+    textAlign: "center",
   },
 });
 
