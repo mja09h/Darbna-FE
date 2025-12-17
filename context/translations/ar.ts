@@ -23,7 +23,6 @@ export const ar: TranslationKeys = {
     noAccount: "ليس لديك حساب؟",
     signUp: "إنشاء حساب",
     or: "أو",
-    continueWithGoogle: "المتابعة مع جوجل",
     continueWithApple: "المتابعة مع أبل",
     loggingIn: "جاري تسجيل الدخول...",
 
@@ -159,7 +158,6 @@ export const ar: TranslationKeys = {
     socialStats: "الإحصائيات الاجتماعية",
     savedRoutes: "المسارات المحفوظة",
     securityConnections: "الأمان والاتصالات",
-    googleAccount: "حساب جوجل",
     appleAccount: "حساب أبل",
     notConnected: "غير متصل",
     connected: "متصل",

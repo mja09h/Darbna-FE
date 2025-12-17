@@ -21,7 +21,6 @@ export const en = {
     noAccount: "Don't have an account?",
     signUp: "Sign Up",
     or: "or",
-    continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
     loggingIn: "Logging in...",
 
@@ -158,7 +157,6 @@ export const en = {
     socialStats: "Social Stats",
     savedRoutes: "Saved Routes",
     securityConnections: "Security & Connections",
-    googleAccount: "Google Account",
     appleAccount: "Apple Account",
     notConnected: "Not Connected",
     connected: "Connected",

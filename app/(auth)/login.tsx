@@ -39,7 +39,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(
+  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(
     null
   );
 
