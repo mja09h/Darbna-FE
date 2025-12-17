@@ -6,16 +6,19 @@ import {
   Text,
   Alert,
   SafeAreaView,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import { IGPSPoint } from "../../../../types/route";
 import InteractiveMap from "../../../../components/InteractiveMap";
 import SOSModal from "../../../../components/SOSModal";
 import SOSHeaderButton from "../../../../components/SOSHeaderButton";
+import SaveRouteModal from "../../../../components/SaveRouteModal";
+
 
 // Darbna Brand Colors
 const COLORS = {
@@ -55,6 +58,8 @@ const HomePage = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [userLocation, setUserLocation] =
     useState<Location.LocationObject | null>(null);
+  const [screenshotUri, setScreenshotUri] = useState<string | undefined>(undefined);
+  const [routeDescription, setRouteDescription] = useState("");
 
   // Request location permissions and start tracking user location
   useEffect(() => {
@@ -185,7 +190,7 @@ const HomePage = () => {
           await stopRecording();
           setRouteName("");
           setRecordingTime(0);
-          setScreenshotUri(undefined);
+          setScreenshotUri(undefined); 
         },
         style: "destructive",
       },
@@ -195,7 +200,7 @@ const HomePage = () => {
           // Capture screenshot of the map if possible
           // Note: For now, we'll skip screenshot capture as it requires react-native-view-shot
           // You can add it later by wrapping the map in a View with a ref
-          setScreenshotUri(undefined);
+          setScreenshotUri(undefined); 
           setShowSaveModal(true);
         },
       },
@@ -377,73 +382,25 @@ const HomePage = () => {
           })()}
 
         {/* Save Route Modal */}
+        <SaveRouteModal 
+          visible={showSaveModal}
+          routeName={routeName}
+          distance={currentRoute?.distance || 0}
+          duration={recordingTime}
+          screenshotUri={screenshotUri}
+          onSave={handleSaveRoute}
+          onCancel={() => setShowSaveModal(false)}
+        />
+
         <SaveRouteModal
           visible={showSaveModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowSaveModal(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Save Route</Text>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Route Name"
-                value={routeName}
-                onChangeText={setRouteName}
-                placeholderTextColor={COLORS.lightText}
-              />
-
-              <TextInput
-                style={[styles.input, styles.descriptionInput]}
-                placeholder="Description (optional)"
-                value={routeDescription}
-                onChangeText={setRouteDescription}
-                multiline={true}
-                numberOfLines={4}
-                placeholderTextColor={COLORS.lightText}
-              />
-
-              <View style={styles.routeStats}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Distance</Text>
-                  <Text style={styles.statValue}>
-                    {formatDistance(currentRoute?.distance || 0)}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Duration</Text>
-                  <Text style={styles.statValue}>
-                    {formatTime(recordingTime)}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Points</Text>
-                  <Text style={styles.statValue}>
-                    {currentRoute?.points.length || 0}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setShowSaveModal(false)}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.saveButton]}
-                  onPress={handleSaveRoute}
-                >
-                  <Text style={styles.modalButtonText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
+          routeName={routeName}
+          distance={currentRoute?.distance || 0}
+          duration={recordingTime}
+          screenshotUri={screenshotUri}
+          onSave={handleSaveRoute}
+          onCancel={() => setShowSaveModal(false)}
+        />
         {/* SOS Modal */}
         <SOSModal
           visible={isSOSModalVisible}

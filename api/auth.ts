@@ -62,47 +62,20 @@ const login = async (
 
 // Register a new user
 const register = async (
-    name: string,
-    username: string,
-    email: string,
-    password: string,
-    country: string): Promise<AuthResponse> => {
-    try {
-        if (!name || !username || !email || !password || !country) {
-            throw new Error("All fields are required");
-        }
-
-        // Try to get AuthResponse (with token) from registration endpoint
-        // The backend may return a token directly, or just the user
-        const registerResponse = await api.post<AuthResponse | User>("/users", {
-            name,
-            username,
-            email,
-            password,
-            country
-        });
-
-        // Check if the response includes a token (AuthResponse)
-        if ('token' in registerResponse.data && registerResponse.data.token) {
-            // Backend returned token directly, use it
-            const authResponse = registerResponse.data as AuthResponse;
-            await setToken(authResponse.token);
-            return authResponse;
-        } else {
-            // Backend only returned user, need to login to get token
-            const loginResponse = await api.post<AuthResponse>("/users/login", { identifier: email, password });
-            await setToken(loginResponse.data.token);
-            return loginResponse.data;
-        }
-
-    } catch (error) {
-        throw error;
+  name: string,
+  username: string,
+  email: string,
+  password: string,
+  country: string
+): Promise<AuthResponse> => {
+  try {
+    if (!name || !username || !email || !password || !country) {
+      throw new Error("All fields are required");
     }
 
-    // Change endpoint from /auth/register to /users
-    // Note: The backend creates the user but doesn't return a token.
-    // We catch the response but don't use it directly for auth.
-    await api.post<User>("/users", {
+    // Try to get AuthResponse (with token) from registration endpoint
+    // The backend may return a token directly, or just the user
+    const registerResponse = await api.post<AuthResponse | User>("/users", {
       name,
       username,
       email,
@@ -110,15 +83,21 @@ const register = async (
       country,
     });
 
-    // After creating user, we need to login to get the token
-    // since createUser endpoint doesn't return a token based on your backend code
-    const loginResponse = await api.post<AuthResponse>("/users/login", {
-      identifier: email,
-      password,
-    });
-
-    await setToken(loginResponse.data.token);
-    return loginResponse.data;
+    // Check if the response includes a token (AuthResponse)
+    if ("token" in registerResponse.data && registerResponse.data.token) {
+      // Backend returned token directly, use it
+      const authResponse = registerResponse.data as AuthResponse;
+      await setToken(authResponse.token);
+      return authResponse;
+    } else {
+      // Backend only returned user, need to login to get token
+      const loginResponse = await api.post<AuthResponse>("/users/login", {
+        identifier: email,
+        password,
+      });
+      await setToken(loginResponse.data.token);
+      return loginResponse.data;
+    }
   } catch (error) {
     throw error;
   }

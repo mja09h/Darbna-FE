@@ -154,7 +154,7 @@ const RouteRecordingScreen = () => {
     }
 
     try {
-      await saveRoute(routeName, routeDescription);
+      await saveRoute(routeName, routeDescription, false, "Running");
       Alert.alert("Success", "Route saved successfully!");
       setShowSaveModal(false);
       setRouteName("");
