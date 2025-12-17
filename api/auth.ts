@@ -4,54 +4,60 @@ import { User, AuthResponse } from "../types/User";
 
 // Google OAuth
 const googleAuth = async (idToken: string): Promise<AuthResponse> => {
-    try {
-        const response = await api.post<AuthResponse>("/auth/google", { idToken });
-        await setToken(response.data.token);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.post<AuthResponse>("/auth/google", { idToken });
+    await setToken(response.data.token);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Apple OAuth
 interface AppleAuthData {
-    identityToken: string;
-    email?: string | null;
-    fullName?: {
-        givenName: string | null;
-        familyName: string | null;
-    } | null;
+  identityToken: string;
+  email?: string | null;
+  fullName?: {
+    givenName: string | null;
+    familyName: string | null;
+  } | null;
 }
 
 const appleAuth = async (data: AppleAuthData): Promise<AuthResponse> => {
-    try {
-        const response = await api.post<AuthResponse>("/auth/apple", data);
-        await setToken(response.data.token);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.post<AuthResponse>("/auth/apple", data);
+    await setToken(response.data.token);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Login
-const login = async (identifier: string, password: string): Promise<AuthResponse> => {
-    try {
-        if (!identifier || !password) {
-            throw new Error("Identifier and password are required");
-        }
-
-        const response = await api.post<AuthResponse>("/users/login", { identifier, password });
-
-        if (response.data.success === false) {
-            throw new Error("Login failed");
-        }
-
-        await setToken(response.data.token);
-        return response.data;
-
-    } catch (error) {
-        throw error;
+const login = async (
+  identifier: string,
+  password: string
+): Promise<AuthResponse> => {
+  try {
+    if (!identifier || !password) {
+      throw new Error("Identifier and password are required");
     }
+
+    const response = await api.post<AuthResponse>("/users/login", {
+      identifier,
+      password,
+    });
+
+    if (response.data.success === false) {
+      throw new Error("Login failed");
+    }
+
+    await setToken(response.data.token);
+    return response.data;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
 };
 
 // Register a new user
@@ -92,53 +98,81 @@ const register = async (
     } catch (error) {
         throw error;
     }
+
+    // Change endpoint from /auth/register to /users
+    // Note: The backend creates the user but doesn't return a token.
+    // We catch the response but don't use it directly for auth.
+    await api.post<User>("/users", {
+      name,
+      username,
+      email,
+      password,
+      country,
+    });
+
+    // After creating user, we need to login to get the token
+    // since createUser endpoint doesn't return a token based on your backend code
+    const loginResponse = await api.post<AuthResponse>("/users/login", {
+      identifier: email,
+      password,
+    });
+
+    await setToken(loginResponse.data.token);
+    return loginResponse.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 const logout = async (): Promise<boolean> => {
-    try {
-        await removeToken();
-        return true;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    await removeToken();
+    return true;
+  } catch (error) {
+    throw error;
+  }
 };
 
 const forgotPassword = async (email: string): Promise<{ message: string }> => {
-    try {
-        if (!email) {
-            throw new Error("Email is required");
-        }
-
-        const response = await api.post("/auth/forgot-password", { email });
-        return response.data;
-
-    } catch (error) {
-        throw error;
+  try {
+    if (!email) {
+      throw new Error("Email is required");
     }
+
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
-const resetPassword = async (token: string, password: string): Promise<{ message: string }> => {
-    try {
-        if (!token || !password) {
-            throw new Error("Token and password are required");
-        }
-
-        const response = await api.post("/auth/reset-password", { token, password });
-        return response.data;
-
-    } catch (error) {
-        throw error;
+const resetPassword = async (
+  token: string,
+  password: string
+): Promise<{ message: string }> => {
+  try {
+    if (!token || !password) {
+      throw new Error("Token and password are required");
     }
+
+    const response = await api.post("/auth/reset-password", {
+      token,
+      password,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 export {
-    login,
-    register,
-    logout,
-    forgotPassword,
-    resetPassword,
-    googleAuth,
-    appleAuth,
+  login,
+  register,
+  logout,
+  forgotPassword,
+  resetPassword,
+  googleAuth,
+  appleAuth,
 };
 
 export type { AppleAuthData };

@@ -32,7 +32,8 @@ const RouteRecordingScreen = () => {
     null
   );
   const [recordingTime, setRecordingTime] = useState(0);
-  const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+  const [userLocation, setUserLocation] =
+    useState<Location.LocationObject | null>(null);
   // Request location permissions and start tracking
   useEffect(() => {
     const requestLocationPermission = async () => {
@@ -159,9 +160,29 @@ const RouteRecordingScreen = () => {
       setRouteName("");
       setRouteDescription("");
       setRecordingTime(0);
-    } catch (error) {
-      Alert.alert("Error", "Failed to save route");
-      console.error("Error saving route:", error);
+    } catch (error: any) {
+      // Handle network errors gracefully
+      if (
+        error?.code === "ERR_NETWORK" ||
+        error?.message?.includes("Network Error")
+      ) {
+        Alert.alert(
+          "Connection Error",
+          "Unable to connect to server. Please check your connection and try again."
+        );
+      } else {
+        Alert.alert("Error", "Failed to save route. Please try again.");
+      }
+      // Don't log network errors to console
+      if (
+        __DEV__ &&
+        !(
+          error?.code === "ERR_NETWORK" ||
+          error?.message?.includes("Network Error")
+        )
+      ) {
+        console.warn("Error saving route:", error?.message || error);
+      }
     }
   };
 
