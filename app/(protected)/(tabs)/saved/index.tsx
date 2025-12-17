@@ -20,14 +20,17 @@ import MapView, {
   UrlTile,
   PROVIDER_DEFAULT,
 } from "react-native-maps";
+import * as Location from "expo-location";
+import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
 import CustomAlert, { AlertButton } from "../../../../components/CustomAlert";
-import { IRecordedRoute, RouteType } from "../../../../types/route";
+import { IRecordedRoute, IGPSPoint, RouteType } from "../../../../types/route";
 import { BASE_URL } from "../../../../api/index";
+import { getRouteDirections } from "../../../../api/routes";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -123,18 +126,34 @@ const SavedRoutesScreen = () => {
           style: "destructive",
           onPress: async () => {
             try {
+              // Ensure deleteRoute is awaited
               await deleteRoute(routeId);
+
+              // Collapse the card if it was expanded
               if (expandedRouteId === routeId) {
                 setExpandedRouteId(null);
               }
+
+              // Show success message
               showAlert(
                 t.common.success,
                 t.savedRoutes.deleteSuccess,
                 "success"
               );
+
               setRouteToDelete(null);
-            } catch (error) {
-              showAlert(t.common.error, t.savedRoutes.deleteFailed, "error");
+
+              // Refresh routes after deletion
+              await fetchUserRoutes();
+            } catch (error: any) {
+              console.error("Delete error:", error);
+
+              const errorMessage =
+                error?.response?.data?.message ||
+                error?.message ||
+                t.savedRoutes.deleteFailed;
+
+              showAlert(t.common.error, errorMessage, "error");
               setRouteToDelete(null);
             }
           },
@@ -198,6 +217,19 @@ const SavedRoutesScreen = () => {
     if (duration === 0) return 0;
     const hours = duration / 3600;
     return distance / hours;
+  };
+
+  // Calculate elevation gain from GPS points
+  const calculateElevationGain = (points: IGPSPoint[]): number => {
+    let totalGain = 0;
+    for (let i = 1; i < points.length; i++) {
+      const elevationDiff =
+        (points[i].elevation || 0) - (points[i - 1].elevation || 0);
+      if (elevationDiff > 0) {
+        totalGain += elevationDiff;
+      }
+    }
+    return Math.round(totalGain);
   };
 
   const getRouteBounds = useCallback((route: IRecordedRoute) => {
@@ -277,6 +309,79 @@ const SavedRoutesScreen = () => {
     const isExpanded = expandedRouteId === route._id;
     const averageSpeed = calculateAverageSpeed(route.distance, route.duration);
     const routeBounds = getRouteBounds(route);
+    const handleGetDirections = async () => {
+      try {
+        // Get user's current location
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        // Try to get directions from backend (optional enhancement)
+        try {
+          const directionsData = await getRouteDirections(
+            route._id,
+            location.coords.latitude,
+            location.coords.longitude
+          );
+
+          const mapsUrl =
+            directionsData?.googleMapsUrl ||
+            directionsData?.url ||
+            directionsData?.link;
+
+          if (mapsUrl) {
+            const canOpen = await Linking.canOpenURL(mapsUrl);
+            if (canOpen) {
+              await Linking.openURL(mapsUrl);
+              return;
+            }
+          }
+        } catch (err: any) {
+          // If the backend endpoint is not implemented (404), fall back to client‑side URL
+          if (err?.response?.status && err.response.status !== 404 && __DEV__) {
+            console.warn("Directions API error:", err?.message || err);
+          }
+        }
+
+        // Fallback: open Google Maps directions from current location to route start
+        if (!route.path.coordinates.length) {
+          showAlert(
+            t.common.error,
+            "This route has no coordinates to navigate to.",
+            "error"
+          );
+          return;
+        }
+
+        const [startLng, startLat] = route.path.coordinates[0];
+        const origin = `${location.coords.latitude},${location.coords.longitude}`;
+        const destination = `${startLat},${startLng}`;
+        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+          origin
+        )}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
+
+        const canOpenFallback = await Linking.canOpenURL(fallbackUrl);
+        if (canOpenFallback) {
+          await Linking.openURL(fallbackUrl);
+        } else {
+          showAlert(
+            t.common.error,
+            "No maps application is available to open directions.",
+            "error"
+          );
+        }
+      } catch (error: any) {
+        if (__DEV__) {
+          console.warn("Error getting directions:", error?.message || error);
+        }
+        showAlert(
+          t.common.error,
+          error?.message || "Could not get directions",
+          "error"
+        );
+      }
+    };
+    const elevationGain = calculateElevationGain(route.points);
 
     // Get all images (screenshot + additional images, max 4 total)
     const allImages: Array<{ url: string; uploadedAt: Date | string }> = [];
@@ -617,6 +722,29 @@ const SavedRoutesScreen = () => {
                     </Text>
                   </View>
                 </View>
+
+                {elevationGain > 0 && (
+                  <View style={styles.statItem}>
+                    <Ionicons
+                      name="trending-up-outline"
+                      size={20}
+                      color={colors.primary}
+                    />
+                    <View style={styles.statContent}>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: colors.textSecondary },
+                        ]}
+                      >
+                        Elevation
+                      </Text>
+                      <Text style={[styles.statValue, { color: colors.text }]}>
+                        {elevationGain}m
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
 
               {/* Start Time */}
@@ -634,6 +762,22 @@ const SavedRoutesScreen = () => {
 
             {/* Actions */}
             <View style={styles.actionsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  styles.directionButton,
+                  { borderColor: colors.primary },
+                ]}
+                onPress={handleGetDirections}
+              >
+                <Ionicons name="navigate" size={20} color={colors.primary} />
+                <Text
+                  style={[styles.actionButtonText, { color: colors.primary }]}
+                >
+                  {t.savedRoutes.viewFullMap}
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={[
                   styles.actionButton,
@@ -929,6 +1073,9 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: "rgba(255, 59, 48, 0.1)",
+  },
+  directionButton: {
+    backgroundColor: "rgba(0, 122, 255, 0.08)",
   },
   actionButtonText: {
     fontSize: 16,
