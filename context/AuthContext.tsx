@@ -25,7 +25,7 @@ import {
 
 // Development flag to bypass authentication for testing
 // Set to false to re-enable authentication
-const BYPASS_AUTH = true;
+const BYPASS_AUTH = false;
 
 // Mock user for testing when authentication is bypassed
 const MOCK_USER: User = {
@@ -88,9 +88,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     checkAuthStatus();
   }, []);
-
-  // TODO: DEV MODE - Set to true to bypass auth protection
-  const DEV_BYPASS_AUTH = false;
 
   // Handle routing based on auth status
   useEffect(() => {
