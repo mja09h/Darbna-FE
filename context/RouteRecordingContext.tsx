@@ -183,11 +183,15 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
               name: filename,
             } as any);
 
-            await api.post<any>(`/routes/${savedRoute._id}/screenshot`, formData, {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            });
+            await api.post<any>(
+              `/routes/${savedRoute._id}/screenshot`,
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              }
+            );
           } catch (error) {
             // Continue even if screenshot upload fails
             if (__DEV__) {
@@ -235,7 +239,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
   // Delete a route from the backend
   const deleteRoute = useCallback(async (routeId: string) => {
     try {
+      // Call the backend delete API
       await deleteRouteAPI(routeId);
+
+      // Remove from local state
       setState((prevState) => ({
         ...prevState,
         recordedRoutes: prevState.recordedRoutes.filter(
@@ -246,42 +253,35 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
             ? null
             : prevState.selectedRoute,
       }));
+
+      return true;
     } catch (error: any) {
-      // Only log non-network errors to avoid console spam when backend is offline
-      if (__DEV__) {
-        if (
-          error?.code === "ERR_NETWORK" ||
-          error?.message?.includes("Network Error")
-        ) {
-          // Network error - backend not available, silently fail
-        } else {
-          // Other errors should be logged
-          console.warn("Error deleting route:", error?.message || error);
-        }
-      }
+      console.error("Error deleting route:", error);
       throw error;
     }
   }, []);
 
-  // Fetch all routes for the current user
+  // Fetch all routes for the current user (private routes only)
   const fetchUserRoutes = useCallback(async () => {
     try {
-      const routes = await getUserRoutes();
+      const routes = await getUserRoutes(); // GET /routes
+
+      // Ensure we only have private routes (backend should filter, but double-check)
+      const privateRoutes = routes.filter((route) => route.isPublic === false);
+
       setState((prevState) => ({
         ...prevState,
-        recordedRoutes: routes,
+        recordedRoutes: privateRoutes,
       }));
     } catch (error: any) {
-      // Only log non-network errors to avoid console spam when backend is offline
       if (__DEV__) {
         if (
-          error?.code === "ERR_NETWORK" ||
-          error?.message?.includes("Network Error")
+          !(
+            error?.code === "ERR_NETWORK" ||
+            error?.message?.includes("Network Error")
+          )
         ) {
-          // Network error - backend not available, silently fail
-        } else {
-          // Other errors should be logged
-          console.warn("Error fetching routes:", error?.message || error);
+          console.warn("Error fetching user routes:", error?.message || error);
         }
       }
       throw error;
