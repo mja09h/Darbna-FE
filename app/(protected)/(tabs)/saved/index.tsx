@@ -1,168 +1,138 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  Text,
   View,
-  ScrollView,
+  SafeAreaView,
+  StyleSheet,
+  FlatList,
+  Text,
+  TextInput,
   TouchableOpacity,
-  StatusBar,
-  Image,
+  ScrollView,
   ActivityIndicator,
+  Alert,
+  Modal,
 } from "react-native";
-import MapView, {
-  Polyline,
-  UrlTile,
-  PROVIDER_DEFAULT,
-} from "react-native-maps";
-import * as Location from "expo-location";
-import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
-import { useRouteRecording } from "../../../../context/RouteRecordingContext";
-import CustomAlert, { AlertButton } from "../../../../components/CustomAlert";
-import { IRecordedRoute, IGPSPoint, RouteType } from "../../../../types/route";
-import { BASE_URL } from "../../../../api/index";
-import { getRouteDirections } from "../../../../api/routes";
+import {
+  SavedRoutesProvider,
+  useSavedRoutes,
+} from "../../../../context/SavedRoutesContext";
+import { ISavedRoute } from "../../../../context/SavedRoutesContext";
 
-const HEADER_BG_COLOR = "#2c120c";
+// Darbna Brand Colors
+const COLORS = {
+  desertOrange: "#C46F26",
+  darkSandBrown: "#3A1D1A",
+  palmBrown: "#7D4828",
+  sandBeige: "#E9DCCF",
+  offWhiteDesert: "#F4EEE7",
+  white: "#FFFFFF",
+  text: "#333333",
+  lightText: "#666666",
+  darkBackground: "#1a1a1a",
+  darkCard: "#2a2a2a",
+};
 
-const SavedRoutesScreen = () => {
-  const { t, isRTL } = useLanguage();
-  const { colors } = useTheme();
+// ==================== HEADER COMPONENT ====================
+const HeaderComponent = ({ onSearchPress }: { onSearchPress: () => void }) => {
+  return (
+    <View style={styles.headerContainer}>
+      <View style={styles.headerLeft}>
+        <Text style={styles.headerTitle}>Saved Routes</Text>
+      </View>
+      <View style={styles.headerRight}>
+        <TouchableOpacity
+          style={styles.searchIconButton}
+          onPress={onSearchPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search" size={22} color={COLORS.white} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+// ==================== FOLDER LIST COMPONENT ====================
+const FolderListComponent = () => {
+  const { folders, selectedFolder, setSelectedFolder } = useSavedRoutes();
+
+  if (!folders || folders.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.folderListContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.folderScrollView}
+      >
+        {folders.map((folder) => (
+          <TouchableOpacity
+            key={folder._id}
+            onPress={() => setSelectedFolder(folder)}
+            style={[
+              styles.folderButton,
+              selectedFolder?._id === folder._id && styles.folderButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.folderText,
+                selectedFolder?._id === folder._id && styles.folderTextActive,
+              ]}
+            >
+              {folder.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+};
+
+// ==================== ROUTE ITEM COMPONENT ====================
+const RouteItem = ({ route }: { route: ISavedRoute }) => {
+  const { deleteSavedRoute, toggleFavorite } = useSavedRoutes();
   const { units } = useSettings();
-  const { recordedRoutes, deleteRoute, fetchUserRoutes } = useRouteRecording();
 
-  const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
-  const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{
-    title: string;
-    message: string;
-    buttons?: AlertButton[];
-    type?: "success" | "error" | "warning" | "info";
-  }>({ title: "", message: "" });
-  const [routeToDelete, setRouteToDelete] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const mapRefs = useRef<{ [key: string]: MapView | null }>({});
-
-  // Filter to only show private routes (isPublic === false)
-  // Backend should already filter, but we ensure it here too
-  const routes = useMemo(
-    () => recordedRoutes.filter((route) => route.isPublic === false),
-    [recordedRoutes]
-  );
-
-  useEffect(() => {
-    const loadRoutes = async () => {
-      setLoading(true);
-      try {
-        await fetchUserRoutes();
-      } catch (error: any) {
-        // Silently fail for network errors - backend may not be running
-        // Only log in development mode, not in production
-        if (__DEV__) {
-          // Check if it's a network error (backend not available)
-          if (
-            error?.code === "ERR_NETWORK" ||
-            error?.message?.includes("Network Error")
-          ) {
-            // Backend is not available - this is expected in development
-            // Don't log as error, just silently fail
-          } else {
-            // Other errors should be logged
-            console.warn("Error fetching routes:", error?.message || error);
-          }
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadRoutes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Reset expanded state when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      setExpandedRouteId(null);
-    }, [])
-  );
-
-  const showAlert = (
-    title: string,
-    message: string,
-    type: "success" | "error" | "warning" | "info" = "info",
-    buttons?: AlertButton[]
-  ) => {
-    setAlertConfig({ title, message, type, buttons });
-    setAlertVisible(true);
-  };
-
-  const handleRoutePress = (routeId: string) => {
-    if (expandedRouteId === routeId) {
-      setExpandedRouteId(null);
-    } else {
-      setExpandedRouteId(routeId);
+  const formatDistance = (km: number): string => {
+    if (units === "miles") {
+      const miles = km * 0.621371;
+      return miles < 1
+        ? `${(miles * 5280).toFixed(0)} ft`
+        : `${miles.toFixed(2)} mi`;
     }
+    return km < 1 ? `${(km * 1000).toFixed(0)} m` : `${km.toFixed(2)} km`;
   };
 
-  const handleDeletePress = (routeId: string) => {
-    setRouteToDelete(routeId);
-    showAlert(
-      t.savedRoutes.deleteRoute,
-      t.savedRoutes.deleteConfirm,
-      "warning",
+  const formatDate = (date: Date | string): string => {
+    const d = typeof date === "string" ? new Date(date) : date;
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Route",
+      "Are you sure you want to delete this saved route?",
       [
+        { text: "Cancel", style: "cancel" },
         {
-          text: t.common.cancel,
-          style: "cancel",
-          onPress: () => {
-            setRouteToDelete(null);
-          },
-        },
-        {
-          text: t.common.delete,
+          text: "Delete",
           style: "destructive",
           onPress: async () => {
             try {
-              // Ensure deleteRoute is awaited
-              await deleteRoute(routeId);
-
-              // Collapse the card if it was expanded
-              if (expandedRouteId === routeId) {
-                setExpandedRouteId(null);
-              }
-
-              // Show success message
-              showAlert(
-                t.common.success,
-                t.savedRoutes.deleteSuccess,
-                "success"
-              );
-
-              setRouteToDelete(null);
-
-              // Refresh routes after deletion
-              await fetchUserRoutes();
-            } catch (error: any) {
-              console.error("Delete error:", error);
-
-              const errorMessage =
-                error?.response?.data?.message ||
-                error?.message ||
-                t.savedRoutes.deleteFailed;
-
-              showAlert(t.common.error, errorMessage, "error");
-              setRouteToDelete(null);
+              await deleteSavedRoute(route._id);
+            } catch (error) {
+              // Error handled silently
             }
           },
         },
@@ -170,136 +140,16 @@ const SavedRoutesScreen = () => {
     );
   };
 
-  const formatDistance = (km: number): string => {
-    if (units === "miles") {
-      const miles = km * 0.621371;
-      if (miles < 1) {
-        return `${(miles * 5280).toFixed(0)} ft`;
-      }
-      return `${miles.toFixed(2)} mi`;
+  const handleToggleFavorite = async () => {
+    try {
+      await toggleFavorite(route._id);
+    } catch (error) {
+      // Error handled silently
     }
-    if (km < 1) {
-      return `${(km * 1000).toFixed(0)} m`;
-    }
-    return `${km.toFixed(2)} km`;
   };
 
-  const formatDuration = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
-  };
-
-  const formatDate = (date: Date | string): string => {
-    const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleDateString(isRTL ? "ar-EG" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatDateTime = (date: Date | string): string => {
-    const d = typeof date === "string" ? new Date(date) : date;
-    return d.toLocaleString(isRTL ? "ar-EG" : "en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const calculateAverageSpeed = (
-    distance: number,
-    duration: number
-  ): number => {
-    if (duration === 0) return 0;
-    const hours = duration / 3600;
-    return distance / hours;
-  };
-
-  // Calculate elevation gain from GPS points
-  const calculateElevationGain = (points: IGPSPoint[]): number => {
-    let totalGain = 0;
-    for (let i = 1; i < points.length; i++) {
-      const elevationDiff =
-        (points[i].elevation || 0) - (points[i - 1].elevation || 0);
-      if (elevationDiff > 0) {
-        totalGain += elevationDiff;
-      }
-    }
-    return Math.round(totalGain);
-  };
-
-  const getRouteBounds = useCallback((route: IRecordedRoute) => {
-    if (route.path.coordinates.length === 0) {
-      return {
-        latitude: 24.7136,
-        longitude: 46.6753,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-    }
-
-    const lats = route.path.coordinates.map((c) => c[1]);
-    const lngs = route.path.coordinates.map((c) => c[0]);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLng = (minLng + maxLng) / 2;
-    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.01);
-    const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.01);
-
-    return {
-      latitude: centerLat,
-      longitude: centerLng,
-      latitudeDelta: latDelta,
-      longitudeDelta: lngDelta,
-    };
-  }, []);
-
-  // Center map on route when expanded
-  useEffect(() => {
-    if (expandedRouteId) {
-      const route = routes.find((r) => r._id === expandedRouteId);
-      if (route && route.path.coordinates.length > 0) {
-        const mapRef = mapRefs.current[expandedRouteId];
-        if (mapRef) {
-          const routeBounds = getRouteBounds(route);
-          mapRef.animateToRegion(routeBounds, 500);
-        }
-      }
-    }
-  }, [expandedRouteId, routes, getRouteBounds]);
-
-  const getRouteTypeLabel = (routeType?: string | RouteType): string => {
-    if (!routeType) return t.savedRoutes.routeTypes.Other;
-    const routeTypes = t.savedRoutes.routeTypes;
-    const type = routeType as RouteType;
-    return (
-      (type === "Running" && routeTypes.Running) ||
-      (type === "Cycling" && routeTypes.Cycling) ||
-      (type === "Walking" && routeTypes.Walking) ||
-      (type === "Hiking" && routeTypes.Hiking) ||
-      routeTypes.Other
-    );
-  };
-
-  const getRouteTypeIcon = (routeType?: string | RouteType): string => {
-    const type = routeType as RouteType;
-    switch (type) {
+  const getRouteIcon = (routeType?: string): string => {
+    switch (routeType) {
       case "Running":
         return "fitness-outline";
       case "Cycling":
@@ -313,686 +163,493 @@ const SavedRoutesScreen = () => {
     }
   };
 
-  const renderRouteCard = (route: IRecordedRoute) => {
-    const isExpanded = expandedRouteId === route._id;
-    const averageSpeed = calculateAverageSpeed(route.distance, route.duration);
-    const routeBounds = getRouteBounds(route);
-    const handleGetDirections = async () => {
+  return (
+    <TouchableOpacity style={styles.routeItemContainer} activeOpacity={0.8}>
+      <View style={styles.routeCard}>
+        {/* Route Icon */}
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={getRouteIcon(route.routeId.routeType) as any}
+            size={26}
+            color={COLORS.desertOrange}
+          />
+        </View>
+
+        {/* Route Info */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.routeName} numberOfLines={1}>
+            {route.routeId.name}
+          </Text>
+          <View style={styles.metadataRow}>
+            <View style={styles.metadataItem}>
+              <Ionicons
+                name="navigate-outline"
+                size={14}
+                color={COLORS.lightText}
+              />
+              <Text style={styles.metadata}>
+                {formatDistance(route.routeId.distance)}
+              </Text>
+            </View>
+            <View style={styles.metadataItem}>
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={COLORS.lightText}
+              />
+              <Text style={styles.metadata}>{formatDate(route.savedAt)}</Text>
+            </View>
+          </View>
+          {route.folderId && (
+            <View style={styles.folderBadge}>
+              <Ionicons
+                name="folder-outline"
+                size={12}
+                color={COLORS.desertOrange}
+              />
+              <Text style={styles.folder}>{route.folderId.name}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionContainer}>
+          <TouchableOpacity
+            onPress={handleToggleFavorite}
+            style={[
+              styles.actionButton,
+              route.isFavorite && styles.actionButtonActive,
+            ]}
+          >
+            <Ionicons
+              name={route.isFavorite ? "heart" : "heart-outline"}
+              size={22}
+              color={route.isFavorite ? COLORS.desertOrange : COLORS.lightText}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
+            <Ionicons name="trash-outline" size={20} color={COLORS.lightText} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ==================== ROUTE LIST COMPONENT ====================
+const RouteListComponent = () => {
+  const {
+    savedRoutes,
+    loading,
+    fetchSavedRoutes,
+    selectedFolder,
+    searchQuery,
+  } = useSavedRoutes();
+
+  useEffect(() => {
+    const loadRoutes = async () => {
       try {
-        // Get user's current location
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-
-        // Try to get directions from backend (optional enhancement)
-        try {
-          const directionsData = await getRouteDirections(
-            route._id,
-            location.coords.latitude,
-            location.coords.longitude
-          );
-
-          const mapsUrl =
-            directionsData?.googleMapsUrl ||
-            directionsData?.url ||
-            directionsData?.link;
-
-          if (mapsUrl) {
-            const canOpen = await Linking.canOpenURL(mapsUrl);
-            if (canOpen) {
-              await Linking.openURL(mapsUrl);
-              return;
-            }
-          }
-        } catch (err: any) {
-          // If the backend endpoint is not implemented (404), fall back to client‑side URL
-          if (err?.response?.status && err.response.status !== 404 && __DEV__) {
-            console.warn("Directions API error:", err?.message || err);
-          }
-        }
-
-        // Fallback: open Google Maps directions from current location to route start
-        if (!route.path.coordinates.length) {
-          showAlert(
-            t.common.error,
-            "This route has no coordinates to navigate to.",
-            "error"
-          );
-          return;
-        }
-
-        const [startLng, startLat] = route.path.coordinates[0];
-        const origin = `${location.coords.latitude},${location.coords.longitude}`;
-        const destination = `${startLat},${startLng}`;
-        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-          origin
-        )}&destination=${encodeURIComponent(destination)}&travelmode=walking`;
-
-        const canOpenFallback = await Linking.canOpenURL(fallbackUrl);
-        if (canOpenFallback) {
-          await Linking.openURL(fallbackUrl);
-        } else {
-          showAlert(
-            t.common.error,
-            "No maps application is available to open directions.",
-            "error"
-          );
-        }
-      } catch (error: any) {
-        if (__DEV__) {
-          console.warn("Error getting directions:", error?.message || error);
-        }
-        showAlert(
-          t.common.error,
-          error?.message || "Could not get directions",
-          "error"
-        );
+        await fetchSavedRoutes(selectedFolder?._id);
+      } catch (error) {
+        // Silently handle error
       }
     };
-    const elevationGain = calculateElevationGain(route.points);
 
-    // Get all images (screenshot + additional images, max 4 total)
-    const allImages: Array<{ url: string; uploadedAt: Date | string }> = [];
-    if (route.screenshot?.url) {
-      allImages.push(route.screenshot);
-    }
-    if (route.images && route.images.length > 0) {
-      const remainingSlots = 4 - allImages.length;
-      allImages.push(...route.images.slice(0, remainingSlots));
-    }
+    loadRoutes();
+  }, [selectedFolder]);
 
+  const filteredRoutes = savedRoutes.filter((route) =>
+    route.routeId.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) {
     return (
-      <View
-        key={route._id}
-        style={[
-          styles.routeCard,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-          },
-          isExpanded && styles.routeCardExpanded,
-        ]}
-      >
-        {/* Collapsed Card Header */}
-        <TouchableOpacity
-          style={styles.cardHeader}
-          onPress={() => handleRoutePress(route._id)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.cardHeaderContent}>
-            <Text style={[styles.routeName, { color: colors.text }]}>
-              {route.name}
-            </Text>
-            <Ionicons
-              name={isExpanded ? "chevron-up" : "chevron-down"}
-              size={20}
-              color={colors.textSecondary}
-            />
-          </View>
-        </TouchableOpacity>
-
-        {/* Expanded Card Content */}
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            {/* Route Media Section */}
-            {allImages.length > 0 && (
-              <View style={styles.mediaContainer}>
-                {/* Screenshot (Primary) */}
-                {route.screenshot?.url && (
-                  <View style={styles.screenshotContainer}>
-                    <Image
-                      source={{ uri: route.screenshot.url }}
-                      style={styles.screenshot}
-                      resizeMode="cover"
-                    />
-                  </View>
-                )}
-
-                {/* Additional Images */}
-                {route.images && route.images.length > 0 && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.imagesScroll}
-                    contentContainerStyle={styles.imagesScrollContent}
-                  >
-                    {route.images
-                      .slice(0, route.screenshot?.url ? 3 : 4)
-                      .map((image, index) => (
-                        <View
-                          key={`${image.url}-${index}`}
-                          style={styles.imageThumbnailContainer}
-                        >
-                          <Image
-                            source={{ uri: image.url }}
-                            style={styles.imageThumbnail}
-                            resizeMode="cover"
-                          />
-                        </View>
-                      ))}
-                  </ScrollView>
-                )}
-
-                {/* Placeholder if no images */}
-                {allImages.length === 0 && (
-                  <View
-                    style={[
-                      styles.mediaPlaceholder,
-                      { backgroundColor: colors.card },
-                    ]}
-                  >
-                    <Ionicons
-                      name="image-outline"
-                      size={48}
-                      color={colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.mediaPlaceholderText,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      No images available
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Interactive Map */}
-            <View style={styles.mapContainer}>
-              <MapView
-                ref={(ref) => {
-                  mapRefs.current[route._id] = ref;
-                }}
-                provider={PROVIDER_DEFAULT}
-                style={styles.map}
-                initialRegion={routeBounds}
-                scrollEnabled={true}
-                zoomEnabled={true}
-                showsUserLocation={false}
-                showsMyLocationButton={false}
-              >
-                <UrlTile
-                  urlTemplate={`${BASE_URL}/map/tiles/{z}/{x}/{y}.png`}
-                />
-                {route.path.coordinates.length >= 2 && (
-                  <Polyline
-                    coordinates={route.path.coordinates.map((c) => ({
-                      latitude: c[1],
-                      longitude: c[0],
-                    }))}
-                    strokeColor={colors.primary}
-                    strokeWidth={4}
-                    lineCap="round"
-                    lineJoin="round"
-                  />
-                )}
-              </MapView>
-            </View>
-
-            {/* Route Information */}
-            <View
-              style={[styles.infoContainer, { backgroundColor: colors.card }]}
-            >
-              {/* Description */}
-              {route.description && (
-                <View style={styles.infoSection}>
-                  <Text
-                    style={[styles.infoLabel, { color: colors.textSecondary }]}
-                  >
-                    {t.savedRoutes.description}
-                  </Text>
-                  <Text
-                    style={[styles.infoValue, { color: colors.text }]}
-                    numberOfLines={3}
-                  >
-                    {route.description}
-                  </Text>
-                </View>
-              )}
-
-              {/* Route Type */}
-              {route.routeType && (
-                <View style={styles.infoSection}>
-                  <Text
-                    style={[styles.infoLabel, { color: colors.textSecondary }]}
-                  >
-                    {t.savedRoutes.routeType}
-                  </Text>
-                  <View style={styles.infoValueRow}>
-                    <Ionicons
-                      name={getRouteTypeIcon(route.routeType) as any}
-                      size={18}
-                      color={colors.primary}
-                    />
-                    <Text style={[styles.infoValue, { color: colors.text }]}>
-                      {getRouteTypeLabel(route.routeType)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Statistics Grid */}
-              <View style={styles.statsGrid}>
-                <View style={styles.statItem}>
-                  <Ionicons
-                    name="location-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <View style={styles.statContent}>
-                    <Text
-                      style={[
-                        styles.statLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t.savedRoutes.distance}
-                    </Text>
-                    <Text style={[styles.statValue, { color: colors.text }]}>
-                      {formatDistance(route.distance)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.statItem}>
-                  <Ionicons
-                    name="time-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <View style={styles.statContent}>
-                    <Text
-                      style={[
-                        styles.statLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t.savedRoutes.duration}
-                    </Text>
-                    <Text style={[styles.statValue, { color: colors.text }]}>
-                      {formatDuration(route.duration)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.statItem}>
-                  <Ionicons
-                    name="speedometer-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <View style={styles.statContent}>
-                    <Text
-                      style={[
-                        styles.statLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t.savedRoutes.averageSpeed}
-                    </Text>
-                    <Text style={[styles.statValue, { color: colors.text }]}>
-                      {formatDistance(averageSpeed)}/h
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.statItem}>
-                  <Ionicons
-                    name="ellipse-outline"
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <View style={styles.statContent}>
-                    <Text
-                      style={[
-                        styles.statLabel,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {t.savedRoutes.points}
-                    </Text>
-                    <Text style={[styles.statValue, { color: colors.text }]}>
-                      {route.points.length}
-                    </Text>
-                  </View>
-                </View>
-
-                {elevationGain > 0 && (
-                  <View style={styles.statItem}>
-                    <Ionicons
-                      name="trending-up-outline"
-                      size={20}
-                      color={colors.primary}
-                    />
-                    <View style={styles.statContent}>
-                      <Text
-                        style={[
-                          styles.statLabel,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        Elevation
-                      </Text>
-                      <Text style={[styles.statValue, { color: colors.text }]}>
-                        {elevationGain}m
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Start Time */}
-              <View style={styles.infoSection}>
-                <Text
-                  style={[styles.infoLabel, { color: colors.textSecondary }]}
-                >
-                  {t.savedRoutes.startTime}
-                </Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {formatDateTime(route.startTime)}
-                </Text>
-              </View>
-            </View>
-
-            {/* Actions */}
-            <View style={styles.actionsContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.directionButton,
-                  { borderColor: colors.primary },
-                ]}
-                onPress={handleGetDirections}
-              >
-                <Ionicons name="navigate" size={20} color={colors.primary} />
-                <Text
-                  style={[styles.actionButtonText, { color: colors.primary }]}
-                >
-                  {t.savedRoutes.viewFullMap}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  styles.deleteButton,
-                  { borderColor: "#FF3B30" },
-                ]}
-                onPress={() => handleDeletePress(route._id)}
-              >
-                <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                <Text style={[styles.actionButtonText, { color: "#FF3B30" }]}>
-                  {t.savedRoutes.deleteRoute}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.desertOrange} />
       </View>
     );
-  };
+  }
+
+  if (filteredRoutes.length === 0) {
+    return (
+      <View style={styles.centerContainer}>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name="map-outline" size={80} color={COLORS.desertOrange} />
+        </View>
+        <Text style={styles.emptyText}>No saved routes</Text>
+        <Text style={styles.emptySubText}>
+          {searchQuery
+            ? "No routes match your search"
+            : "Start by saving your first route"}
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}>
-      <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+    <FlatList
+      data={filteredRoutes}
+      keyExtractor={(item) => item._id}
+      renderItem={({ item }) => <RouteItem route={item} />}
+      style={styles.list}
+      contentContainerStyle={styles.listContent}
+      showsVerticalScrollIndicator={false}
+    />
+  );
+};
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t.savedRoutes.title}</Text>
-      </View>
+// ==================== SEARCH MODAL COMPONENT ====================
+const SearchModal = ({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) => {
+  const { searchQuery, setSearchQuery } = useSavedRoutes();
 
-      {/* Content */}
-      <View style={[styles.content, { backgroundColor: colors.background }]}>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              {t.common.loading}
-            </Text>
-          </View>
-        ) : routes.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name="map-outline"
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              {t.savedRoutes.noRoutes}
-            </Text>
-            <Text
-              style={[styles.emptyDescription, { color: colors.textSecondary }]}
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <View style={styles.searchContainer}>
+              <Ionicons
+                name="search"
+                size={20}
+                color="#999"
+                style={styles.searchIcon}
+              />
+              <TextInput
+                placeholder="Search saved routes..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                style={styles.searchInput}
+                placeholderTextColor="#666"
+                autoFocus
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onClose}
+              activeOpacity={0.7}
             >
-              {t.savedRoutes.noRoutesDescription}
-            </Text>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-          >
-            {routes.map((route) => renderRouteCard(route))}
-          </ScrollView>
-        )}
+        </View>
       </View>
+    </Modal>
+  );
+};
 
-      {/* Alert */}
-      <CustomAlert
-        visible={alertVisible}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        type={alertConfig.type}
-        buttons={alertConfig.buttons}
-        onDismiss={() => setAlertVisible(false)}
+// ==================== MAIN CONTENT COMPONENT ====================
+const SavedRoutesContent = () => {
+  const { fetchFolders } = useSavedRoutes();
+  const [showSearchModal, setShowSearchModal] = useState(false);
+
+  useEffect(() => {
+    const loadFolders = async () => {
+      try {
+        await fetchFolders();
+      } catch (error) {
+        // Silently handle error
+      }
+    };
+
+    loadFolders();
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <HeaderComponent onSearchPress={() => setShowSearchModal(true)} />
+      <FolderListComponent />
+      <RouteListComponent />
+      <SearchModal
+        visible={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
       />
     </View>
   );
 };
 
-export default SavedRoutesScreen;
+// ==================== MAIN SCREEN COMPONENT ====================
+const SavedRoutesScreen = () => {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <SavedRoutesProvider>
+        <SavedRoutesContent />
+      </SavedRoutesProvider>
+    </SafeAreaView>
+  );
+};
 
+// ==================== STYLES ====================
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.darkSandBrown,
+  },
   container: {
     flex: 1,
+    backgroundColor: COLORS.darkBackground,
   },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+
+  // Header Styles
+  headerContainer: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 60,
+    backgroundColor: COLORS.darkSandBrown,
+    borderBottomWidth: 0,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    alignItems: "flex-end",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "bold",
-    color: "#f5e6d3",
+    fontWeight: "700",
+    color: COLORS.white,
+    letterSpacing: 0.5,
   },
-  content: {
-    flex: 1,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    overflow: "hidden",
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 30,
-    gap: 16,
-  },
-  loadingContainer: {
-    flex: 1,
+  searchIconButton: {
+    padding: 10,
+    borderRadius: 24,
+    backgroundColor: COLORS.offWhiteDesert,
     justifyContent: "center",
     alignItems: "center",
-    gap: 16,
   },
-  loadingText: {
+  // Search Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "flex-start",
+  },
+  modalContent: {
+    backgroundColor: COLORS.darkSandBrown,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingTop: 60,
+    paddingBottom: 24,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.darkCard,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 8,
     fontSize: 16,
-    marginTop: 8,
+    color: COLORS.white,
+    fontWeight: "500",
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
+  closeButton: {
+    padding: 10,
+    borderRadius: 24,
+    backgroundColor: COLORS.darkCard,
+    borderWidth: 1,
+    borderColor: "#404040",
   },
-  emptyTitle: {
-    fontSize: 20,
+
+  // Folder List Styles
+  folderListContainer: {
+    paddingVertical: 16,
+    paddingBottom: 20,
+    backgroundColor: COLORS.darkBackground,
+  },
+  folderScrollView: {
+    paddingHorizontal: 20,
+  },
+  folderButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginHorizontal: 6,
+    borderRadius: 20,
+    backgroundColor: COLORS.darkCard,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  folderButtonActive: {
+    backgroundColor: COLORS.desertOrange,
+    borderColor: COLORS.desertOrange,
+    elevation: 2,
+    shadowColor: COLORS.desertOrange,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  folderText: {
+    fontSize: 14,
+    color: COLORS.lightText,
+    fontWeight: "500",
+  },
+  folderTextActive: {
+    color: COLORS.white,
     fontWeight: "600",
-    marginTop: 20,
-    marginBottom: 8,
   },
-  emptyDescription: {
-    fontSize: 16,
+
+  // Route List Styles
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.darkCard,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    opacity: 0.6,
+  },
+  emptyText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: COLORS.white,
+    marginTop: 8,
     textAlign: "center",
-    lineHeight: 24,
+  },
+  emptySubText: {
+    fontSize: 15,
+    color: COLORS.lightText,
+    marginTop: 8,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
+  // Route Item Styles
+  routeItemContainer: {
+    marginBottom: 16,
   },
   routeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.darkCard,
     borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    overflow: "hidden",
+    borderColor: "#404040",
+    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
-  routeCardExpanded: {
-    marginBottom: 8,
-  },
-  cardHeader: {
-    padding: 12,
-  },
-  cardHeaderContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  routeName: {
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
-  },
-  expandedContent: {
-    padding: 16,
-    paddingTop: 0,
-    gap: 16,
-  },
-  mediaContainer: {
-    gap: 12,
-    marginTop: 8,
-  },
-  screenshotContainer: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  screenshot: {
-    width: "100%",
-    height: "100%",
-  },
-  imagesScroll: {
-    marginTop: 8,
-  },
-  imagesScrollContent: {
-    gap: 8,
-  },
-  imageThumbnailContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    overflow: "hidden",
-    marginRight: 8,
-  },
-  imageThumbnail: {
-    width: "100%",
-    height: "100%",
-  },
-  mediaPlaceholder: {
-    width: "100%",
-    height: 150,
-    borderRadius: 12,
+  iconContainer: {
+    marginRight: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.sandBeige + "20",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
-  },
-  mediaPlaceholderText: {
-    fontSize: 14,
-  },
-  mapContainer: {
-    height: 250,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  map: {
-    flex: 1,
+    borderWidth: 2,
+    borderColor: COLORS.desertOrange + "30",
   },
   infoContainer: {
-    padding: 16,
-    borderRadius: 12,
-    gap: 16,
+    flex: 1,
   },
-  infoSection: {
+  routeName: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: COLORS.white,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 8,
+  },
+  metadataItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  metadata: {
+    fontSize: 13,
+    color: COLORS.lightText,
+    fontWeight: "500",
+  },
+  folderBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
     gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: COLORS.desertOrange + "20",
+    marginTop: 4,
   },
-  infoLabel: {
+  folder: {
     fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  infoValueRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 16,
-    marginTop: 8,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-    minWidth: "45%",
-  },
-  statContent: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 16,
+    color: COLORS.desertOrange,
     fontWeight: "600",
   },
-  actionsContainer: {
-    gap: 12,
+  actionContainer: {
+    flexDirection: "row",
+    gap: 4,
+    marginLeft: 8,
   },
   actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 14,
+    padding: 10,
     borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
+    backgroundColor: COLORS.darkBackground,
   },
-  deleteButton: {
-    backgroundColor: "rgba(255, 59, 48, 0.1)",
-  },
-  directionButton: {
-    backgroundColor: "rgba(0, 122, 255, 0.08)",
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+  actionButtonActive: {
+    backgroundColor: COLORS.desertOrange + "20",
   },
 });
+
+export default SavedRoutesScreen;

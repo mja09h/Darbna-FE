@@ -16,6 +16,7 @@ import {
   getUserRoutes,
   deleteRoute as deleteRouteAPI,
 } from "../api/routes";
+import { Alert } from "react-native";
 import api from "../api";
 
 const RouteRecordingContext = createContext<IRouteRecordingContext | undefined>(
@@ -32,7 +33,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     selectedRoute: null,
   });
 
-  // Calculate distance between two GPS points using Haversine formula
   const calculateDistance = useCallback(
     (point1: IGPSPoint, point2: IGPSPoint) => {
       const R = 6371; // Earth's radius in km
@@ -50,12 +50,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     []
   );
 
-  // Calculate duration between two timestamps in seconds
   const calculateDuration = useCallback((startTime: Date, endTime: Date) => {
     return Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
   }, []);
 
-  // Start recording a new route
   const startRecording = useCallback(
     (routeName: string, description?: string) => {
       const now = new Date();
@@ -75,7 +73,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     []
   );
 
-  // Add a GPS point to the current route
   const addPoint = useCallback(
     (point: IGPSPoint) => {
       setState((prevState) => {
@@ -85,13 +82,11 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         let totalDistance = prevState.currentRoute.distance;
         let duration = 0;
 
-        // Calculate additional distance if there's a previous point
         if (updatedPoints.length > 1) {
           const previousPoint = updatedPoints[updatedPoints.length - 2];
           totalDistance += calculateDistance(previousPoint, point);
         }
 
-        // Calculate duration
         if (prevState.currentRoute.startTime) {
           duration = calculateDuration(
             prevState.currentRoute.startTime,
@@ -113,7 +108,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     [calculateDistance, calculateDuration]
   );
 
-  // Pause recording (not fully stopping)
   const pauseRecording = useCallback(() => {
     setState((prevState) => ({
       ...prevState,
@@ -121,7 +115,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     }));
   }, []);
 
-  // Resume recording
   const resumeRecording = useCallback(() => {
     setState((prevState) => ({
       ...prevState,
@@ -129,7 +122,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     }));
   }, []);
 
-  // Save the current route to the backend
   const saveRoute = useCallback(
     async (
       routeName: string,
@@ -138,34 +130,50 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
       routeType: string,
       screenshotUri?: string
     ): Promise<IRecordedRoute> => {
-      if (!state.currentRoute || state.currentRoute.points.length === 0) {
-        throw new Error("No route data to save");
-      }
-
-      const coordinates = state.currentRoute.points.map((point) => [
-        point.longitude,
-        point.latitude,
-      ]);
-
-      const routeData = {
-        name: routeName,
-        description: description,
-        path: {
-          type: "LineString",
-          coordinates,
-        },
-        startTime: (state.currentRoute.startTime || new Date()).toISOString(), // Convert to ISO string
-        endTime: new Date().toISOString(), // Convert to ISO string
-        distance: state.currentRoute.distance,
-        duration: state.currentRoute.duration,
-        points: state.currentRoute.points.map((point) => ({
-          ...point,
-          timestamp: point.timestamp.toISOString(), // Convert timestamp to ISO string
-        })),
-        isPublic: isPublic,
-        routeType: routeType,
-      };
       try {
+        // Validation: Check if route has at least 10 points
+        if (!state.currentRoute || state.currentRoute.points.length < 10) {
+          Alert.alert(
+            "Route Too Short",
+            `Your route must have at least 10 GPS points. Currently you have ${
+              state.currentRoute?.points.length || 0
+            } points. Please record a longer path.`
+          );
+          throw new Error("Route must have at least 10 points.");
+        }
+
+        // Validation: Check if route duration is at least 1 minute (60 seconds)
+        if (state.currentRoute.duration < 60) {
+          const minutes = Math.floor(state.currentRoute.duration / 60);
+          const seconds = state.currentRoute.duration % 60;
+          Alert.alert(
+            "Route Too Short",
+            `Your route must be at least 1 minute long. Currently your route is ${minutes}m ${seconds}s. Please record for a longer duration.`
+          );
+          throw new Error("Route must be at least 1 minute long.");
+        }
+
+        const routeData = {
+          name: routeName,
+          description: description,
+          path: {
+            type: "LineString",
+            coordinates: state.currentRoute.points.map((point) => [
+              point.longitude,
+              point.latitude,
+            ]),
+          },
+          startTime: (state.currentRoute.startTime || new Date()).toISOString(),
+          distance: state.currentRoute.distance,
+          duration: state.currentRoute.duration,
+          points: state.currentRoute.points.map((point) => ({
+            ...point,
+            timestamp: point.timestamp.toISOString(),
+          })),
+          isPublic: isPublic,
+          routeType: routeType,
+        };
+
         const savedRoute = await createRoute(routeData as any);
 
         // Upload screenshot if provided
@@ -173,7 +181,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
           try {
             const formData = new FormData();
 
-            // Convert URI to blob/file
             const filename =
               screenshotUri.split("/").pop() || "route-screenshot.png";
             const match = /\.(\w+)$/.exec(filename);
@@ -185,7 +192,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
               name: filename,
             } as any);
 
-            await api.post<any>(
+            await api.post<any>( 
               `/routes/${savedRoute._id}/screenshot`,
               formData,
               {
@@ -218,7 +225,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
             error?.message?.includes("Network Error")
           ) {
             // Network error - backend not available, silently fail
-          } else {
+          } else if (
+            !error?.message?.includes("Route must have") &&
+            !error?.message?.includes("at least")
+          ) {
             // Other errors should be logged
             console.warn("Error saving route:", error?.message || error);
           }
@@ -229,7 +239,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     [state.currentRoute]
   );
 
-  // Stop recording without saving
   const stopRecording = useCallback(async () => {
     setState((prevState) => ({
       ...prevState,
@@ -238,13 +247,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     }));
   }, []);
 
-  // Delete a route from the backend
   const deleteRoute = useCallback(async (routeId: string) => {
     try {
-      // Call the backend delete API
       await deleteRouteAPI(routeId);
 
-      // Remove from local state
       setState((prevState) => ({
         ...prevState,
         recordedRoutes: prevState.recordedRoutes.filter(
@@ -263,12 +269,10 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  // Fetch all routes for the current user (private routes only)
   const fetchUserRoutes = useCallback(async () => {
     try {
-      const routes = await getUserRoutes(); // GET /routes
+      const routes = await getUserRoutes();
 
-      // Ensure we only have private routes (backend should filter, but double-check)
       const privateRoutes = routes.filter((route) => route.isPublic === false);
 
       setState((prevState) => ({
@@ -290,7 +294,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     }
   }, []);
 
-  // Select a route to display
   const selectRoute = useCallback((route: IRecordedRoute | null) => {
     setState((prevState) => ({
       ...prevState,
@@ -320,7 +323,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
-// Custom hook to use the RouteRecordingContext
 export const useRouteRecording = () => {
   const context = useContext(RouteRecordingContext);
   if (context === undefined) {
