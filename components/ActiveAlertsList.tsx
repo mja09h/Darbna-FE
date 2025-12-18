@@ -9,40 +9,21 @@ import {
   Alert,
   Linking,
   RefreshControl,
-  Platform,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { getActiveSOSAlerts, offerHelp, cancelHelp } from "../api/sos";
 import { ISOSAlert } from "../types/sos";
 import socket from "../api/socket";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { formatDistanceToNow } from "date-fns";
 
 const formatDistance = (m: number) =>
   m < 1000 ? `${Math.round(m)} m away` : `${(m / 1000).toFixed(1)} km away`;
 
-const formatCoordinates = (coordinates: [number, number]) => {
-  const [longitude, latitude] = coordinates;
-  return `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
-};
-
-const openLocationInMaps = (coordinates: [number, number]) => {
-  const [longitude, latitude] = coordinates;
-  const url = Platform.select({
-    ios: `maps://app?daddr=${latitude},${longitude}`,
-    android: `geo:${latitude},${longitude}?q=${latitude},${longitude}`,
-  });
-  if (url) {
-    Linking.openURL(url).catch((err) => {
-      console.error("Error opening maps:", err);
-      Alert.alert("Error", "Could not open maps app");
-    });
-  }
-};
-
 const ActiveAlertsList = () => {
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const [alerts, setAlerts] = useState<ISOSAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,7 +44,6 @@ const ActiveAlertsList = () => {
     }
   }, []);
 
-  // FIXED: Added pull-to-refresh functionality
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchAlerts();
@@ -74,7 +54,6 @@ const ActiveAlertsList = () => {
     fetchAlerts();
     const handleNew = (newAlert: ISOSAlert) =>
       setAlerts((prev) =>
-        // FIXED: Sort by newest first (createdAt descending), then by distance
         [...prev, newAlert].sort((a, b) => {
           const dateCompare =
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -155,7 +134,11 @@ const ActiveAlertsList = () => {
     }
   };
 
-  if (loading && !refreshing) return <ActivityIndicator />;
+  // FIXED: Create dynamic styles based on theme
+  const dynamicStyles = createDynamicStyles(colors, isDark);
+
+  if (loading && !refreshing)
+    return <ActivityIndicator color={colors.primary} />;
 
   return (
     <FlatList
@@ -163,120 +146,128 @@ const ActiveAlertsList = () => {
       keyExtractor={(item) => item._id}
       renderItem={({ item }) => {
         const isHelping = (item.helpers || []).includes(user!._id);
-        const coordinatesText = formatCoordinates(item.location.coordinates);
+        const isOwnAlert = item.user._id === user!._id;
 
         return (
-          <View style={styles.alertCard}>
+          <View style={[dynamicStyles.alertCard]}>
             <View style={styles.alertInfo}>
-              <Text style={styles.username}>
+              <Text style={[styles.username, { color: colors.text }]}>
                 {item.user.username} needs help
+                {isOwnAlert && (
+                  <Text style={styles.ownAlertBadge}> (Your SOS)</Text>
+                )}
               </Text>
-              <Text style={styles.distance}>
+              <Text style={[styles.distance, { color: colors.textSecondary }]}>
                 {formatDistance(item.distance)}
               </Text>
-              <TouchableOpacity
-                style={styles.locationRow}
-                onPress={() => openLocationInMaps(item.location.coordinates)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="location" size={14} color="#666666" />
-                <Text style={styles.locationText}>{coordinatesText}</Text>
-                <Ionicons
-                  name="map-outline"
-                  size={16}
-                  color="#D9534F"
-                  style={styles.mapIcon}
-                />
-              </TouchableOpacity>
-              <Text style={styles.timeAgo}>
+              <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>
                 {formatDistanceToNow(new Date(item.createdAt))} ago
               </Text>
             </View>
-            <TouchableOpacity
-              style={[styles.helpButton, isHelping && styles.helpButtonActive]}
-              onPress={() => handleHelpPress(item)}
-            >
-              <Text style={styles.helpButtonText}>
-                {isHelping ? "Cancel" : "Help"}
-              </Text>
-            </TouchableOpacity>
+            {isOwnAlert ? (
+              <View style={dynamicStyles.ownAlertButton}>
+                <Text style={dynamicStyles.ownAlertButtonText}>Your Alert</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.helpButton,
+                  isHelping && dynamicStyles.helpButtonActive,
+                ]}
+                onPress={() => handleHelpPress(item)}
+              >
+                <Text style={styles.helpButtonText}>
+                  {isHelping ? "Cancel" : "Help"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       }}
       ListEmptyComponent={
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No active alerts.</Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            No active alerts.
+          </Text>
         </View>
       }
-      // FIXED: Added RefreshControl for pull-to-refresh
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primary}
+        />
       }
     />
   );
 };
 
+// FIXED: Function to create dynamic styles based on theme
+const createDynamicStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    alertCard: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: 16,
+      marginVertical: 8,
+      marginHorizontal: 16,
+      backgroundColor: colors.card,
+      borderRadius: 8,
+      shadowColor: isDark ? "#000" : "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: colors.border,
+    },
+    helpButtonActive: {
+      backgroundColor: isDark ? colors.surface : "#666666",
+    },
+    ownAlertButton: {
+      backgroundColor: isDark ? colors.surface : "#E0E0E0",
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      marginLeft: 12,
+    },
+    ownAlertButtonText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+  });
+
 const styles = StyleSheet.create({
-  alertCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    marginVertical: 8,
-    marginHorizontal: 16,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   alertInfo: {
     flex: 1,
   },
   username: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333333",
     marginBottom: 4,
+  },
+  ownAlertBadge: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#C46F26",
+    fontStyle: "italic",
   },
   distance: {
     fontSize: 14,
-    color: "#666666",
     marginBottom: 4,
-  },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 12,
-    color: "#666666",
-    marginRight: 4,
-  },
-  mapIcon: {
-    marginLeft: -2,
   },
   timeAgo: {
     fontSize: 12,
-    color: "#999999",
     fontStyle: "italic",
   },
   helpButton: {
     backgroundColor: "#D9534F",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
     marginLeft: 12,
-    minWidth: 80,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  helpButtonActive: {
-    backgroundColor: "#666666",
   },
   helpButtonText: {
     color: "#FFFFFF",
@@ -291,7 +282,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "#999999",
   },
 });
 

@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createSOSAlert, resolveSOSAlert } from "../api/sos";
 import ActiveAlertsList from "./ActiveAlertsList";
 import CountdownTimer from "./CountdownTimer";
+import { useTheme } from "../context/ThemeContext";
 
 interface SOSModalProps {
   visible: boolean;
@@ -27,6 +28,9 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
   const [sosExpiry, setSosExpiry] = useState<number | null>(null);
   const [cooldownExpiry, setCooldownExpiry] = useState<number | null>(null);
   const [activeSosAlertId, setActiveSosAlertId] = useState<string | null>(null);
+
+  // FIXED: Use theme context for dark/light mode
+  const { colors, isDark } = useTheme();
 
   console.log("SOSModal", visible);
 
@@ -124,16 +128,6 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
           text: "Yes",
           onPress: async () => {
             try {
-              // Verify token exists before making request
-              const token = await AsyncStorage.getItem("token");
-              if (!token) {
-                Alert.alert(
-                  "Error",
-                  "Authentication required. Please log in again."
-                );
-                return;
-              }
-
               await resolveSOSAlert(activeSosAlertId);
 
               // Clear SOS timer and set cooldown
@@ -142,38 +136,15 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
               await AsyncStorage.removeItem("sosExpiry");
               await AsyncStorage.removeItem("activeSosAlertId");
 
-              // Set 30-minute cooldown timer
+              // FIXED: Set 30-minute cooldown timer
               const expiry = Date.now() + 30 * 60 * 1000; // 30 minutes
               setCooldownExpiry(expiry);
               await AsyncStorage.setItem("cooldownExpiry", String(expiry));
 
               Alert.alert("Success", "Your SOS alert has been canceled.");
             } catch (error: any) {
+              Alert.alert("Error", "Could not cancel SOS alert.");
               console.error("Error canceling SOS:", error);
-
-              // Handle specific error cases
-              let errorMessage = "Could not cancel SOS alert.";
-
-              if (error.response) {
-                const status = error.response.status;
-                const data = error.response.data;
-
-                if (status === 403) {
-                  errorMessage =
-                    data?.message ||
-                    "You don't have permission to cancel this SOS. It may have already been cancelled or you're not the owner.";
-                } else if (status === 404) {
-                  errorMessage = "SOS alert not found or already cancelled.";
-                } else if (status === 401) {
-                  errorMessage = "Authentication failed. Please log in again.";
-                } else if (data?.message) {
-                  errorMessage = data.message;
-                }
-              } else if (error.message) {
-                errorMessage = error.message;
-              }
-
-              Alert.alert("Error", errorMessage);
             }
           },
         },
@@ -198,19 +169,28 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
     await AsyncStorage.removeItem("cooldownExpiry");
   };
 
+  // FIXED: Create dynamic styles based on theme
+  const dynamicStyles = createDynamicStyles(colors, isDark);
+
   return (
     <Modal visible={visible} onRequestClose={onClose} animationType="slide">
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         {/* Header with Title and Close Button */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>SOS Alert</Text>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            SOS Alert
+          </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Ionicons name="close" size={28} color={colors.text} />
           </TouchableOpacity>
         </View>
 
         {/* Tab Buttons */}
-        <View style={styles.tabContainer}>
+        <View
+          style={[styles.tabContainer, { borderBottomColor: colors.border }]}
+        >
           <TouchableOpacity
             style={[styles.tab, activeTab === "send" && styles.activeTab]}
             onPress={() => setActiveTab("send")}
@@ -218,6 +198,7 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
             <Text
               style={[
                 styles.tabText,
+                { color: colors.textSecondary },
                 activeTab === "send" && styles.activeTabText,
               ]}
             >
@@ -231,6 +212,7 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
             <Text
               style={[
                 styles.tabText,
+                { color: colors.textSecondary },
                 activeTab === "alerts" && styles.activeTabText,
               ]}
             >
@@ -244,8 +226,15 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
           <View style={styles.sendContainer}>
             <View style={styles.sendContent}>
               <Ionicons name="warning" size={64} color="#D9534F" />
-              <Text style={styles.sendTitle}>Emergency SOS</Text>
-              <Text style={styles.sendDescription}>
+              <Text style={[styles.sendTitle, { color: colors.text }]}>
+                Emergency SOS
+              </Text>
+              <Text
+                style={[
+                  styles.sendDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Press the button below to send an emergency alert to nearby
                 users
               </Text>
@@ -257,9 +246,10 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
                     expiryTimestamp={sosExpiry}
                     onExpire={handleSosExpire}
                     label="SOS Active - Time Remaining"
+                    textStyle={{ color: colors.text }}
                   />
                   <TouchableOpacity
-                    style={styles.cancelButton}
+                    style={[dynamicStyles.cancelButton]}
                     onPress={handleCancelSOS}
                   >
                     <Text style={styles.cancelButtonText}>Cancel SOS</Text>
@@ -272,8 +262,14 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
                     expiryTimestamp={cooldownExpiry}
                     onExpire={handleCooldownExpire}
                     label="Cooldown - Try Again In"
+                    textStyle={{ color: colors.text }}
                   />
-                  <Text style={styles.cooldownMessage}>
+                  <Text
+                    style={[
+                      styles.cooldownMessage,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     You must wait before sending another SOS
                   </Text>
                 </View>
@@ -305,10 +301,22 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
   );
 };
 
+// FIXED: Function to create dynamic styles based on theme
+const createDynamicStyles = (colors: any, isDark: boolean) =>
+  StyleSheet.create({
+    cancelButton: {
+      backgroundColor: isDark ? colors.surface : "#666666",
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+      borderRadius: 8,
+      marginTop: 16,
+      alignItems: "center",
+    },
+  });
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   header: {
     flexDirection: "row",
@@ -317,12 +325,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#333333",
   },
   closeButton: {
     padding: 4,
@@ -330,7 +336,6 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
   },
   tab: {
     flex: 1,
@@ -344,7 +349,6 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 16,
-    color: "#666666",
     fontWeight: "500",
   },
   activeTabText: {
@@ -365,13 +369,11 @@ const styles = StyleSheet.create({
   sendTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#333333",
     marginTop: 20,
     marginBottom: 12,
   },
   sendDescription: {
     fontSize: 16,
-    color: "#666666",
     textAlign: "center",
     marginBottom: 32,
     lineHeight: 24,
@@ -403,14 +405,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 20,
   },
-  cancelButton: {
-    backgroundColor: "#666666",
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginTop: 16,
-    alignItems: "center",
-  },
   cancelButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
@@ -418,7 +412,6 @@ const styles = StyleSheet.create({
   },
   cooldownMessage: {
     fontSize: 14,
-    color: "#666666",
     marginTop: 12,
     textAlign: "center",
   },
