@@ -12,10 +12,18 @@ const SOSHeaderButton = ({ onPress }: SOSHeaderButtonProps) => (
     onPress={() => {
       onPress();
     }}
-    style={{ marginLeft: 16 }}
+    style={styles.button}
   >
-    <Ionicons name="warning" size={28} color="#D9534F" />
+    <Ionicons name="alert-circle" size={28} color="#D9534F" />
   </TouchableOpacity>
 );
+
+const styles = StyleSheet.create({
+  button: {
+    marginLeft: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
 
 export default SOSHeaderButton;

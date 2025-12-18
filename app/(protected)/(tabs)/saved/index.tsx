@@ -23,6 +23,7 @@ import MapView, {
 import * as Location from "expo-location";
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
@@ -88,6 +89,13 @@ const SavedRoutesScreen = () => {
     loadRoutes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reset expanded state when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setExpandedRouteId(null);
+    }, [])
+  );
 
   const showAlert = (
     title: string,
@@ -412,84 +420,12 @@ const SavedRoutesScreen = () => {
           activeOpacity={0.7}
         >
           <View style={styles.cardHeaderContent}>
-            <View style={styles.cardHeaderLeft}>
-              <Ionicons
-                name={getRouteTypeIcon(route.routeType) as any}
-                size={24}
-                color={colors.primary}
-                style={styles.routeIcon}
-              />
-              <View style={styles.cardHeaderText}>
-                <Text style={[styles.routeName, { color: colors.text }]}>
-                  {route.name}
-                </Text>
-                <View style={styles.routeMeta}>
-                  {route.routeType && (
-                    <>
-                      <Text
-                        style={[
-                          styles.routeMetaText,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {getRouteTypeLabel(route.routeType)}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.routeMetaSeparator,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        •
-                      </Text>
-                    </>
-                  )}
-                  <Text
-                    style={[
-                      styles.routeMetaText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {formatDistance(route.distance)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.routeMetaSeparator,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    •
-                  </Text>
-                  <Text
-                    style={[
-                      styles.routeMetaText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {formatDuration(route.duration)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.routeMetaSeparator,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    •
-                  </Text>
-                  <Text
-                    style={[
-                      styles.routeMetaText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {formatDate(route.createdAt)}
-                  </Text>
-                </View>
-              </View>
-            </View>
+            <Text style={[styles.routeName, { color: colors.text }]}>
+              {route.name}
+            </Text>
             <Ionicons
               name={isExpanded ? "chevron-up" : "chevron-down"}
-              size={24}
+              size={20}
               color={colors.textSecondary}
             />
           </View>
@@ -924,39 +860,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardHeader: {
-    padding: 16,
+    padding: 12,
   },
   cardHeaderContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  cardHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  routeIcon: {
-    marginRight: 12,
-  },
-  cardHeaderText: {
-    flex: 1,
-  },
   routeName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
-    marginBottom: 4,
-  },
-  routeMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  routeMetaText: {
-    fontSize: 14,
-  },
-  routeMetaSeparator: {
-    fontSize: 14,
+    flex: 1,
   },
   expandedContent: {
     padding: 16,

@@ -44,6 +44,12 @@ export interface IRecordedRoute {
   }>;
   createdAt: Date;
   updatedAt: Date;
+  // User data (populated by backend)
+  user?: {
+    _id: string;
+    username: string;
+    name?: string;
+  };
 }
 
 // Represents the state of route recording

@@ -154,15 +154,17 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
           type: "LineString",
           coordinates,
         },
-        startTime: state.currentRoute.startTime || new Date(),
-        endTime: new Date(),
+        startTime: (state.currentRoute.startTime || new Date()).toISOString(), // Convert to ISO string
+        endTime: new Date().toISOString(), // Convert to ISO string
         distance: state.currentRoute.distance,
         duration: state.currentRoute.duration,
-        points: state.currentRoute.points,
+        points: state.currentRoute.points.map((point) => ({
+          ...point,
+          timestamp: point.timestamp.toISOString(), // Convert timestamp to ISO string
+        })),
         isPublic: isPublic,
         routeType: routeType,
       };
-
       try {
         const savedRoute = await createRoute(routeData as any);
 
@@ -306,7 +308,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         resumeRecording,
         addPoint,
         saveRoute,
-        deleteRoute,
+        deleteRoute: deleteRouteAPI,
         fetchUserRoutes,
         selectRoute,
         calculateDistance,
