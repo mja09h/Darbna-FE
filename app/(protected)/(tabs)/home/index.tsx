@@ -235,6 +235,17 @@ const HomePage = () => {
         router.push("/(protected)/(tabs)/saved");
       }
     } catch (error: any) {
+      // Check if this is a validation error from saveRoute (10 points or 1 minute check)
+      // These errors already show an Alert in the context, so don't show another one
+      if (
+        error?.message?.includes("Route must have") ||
+        error?.message?.includes("at least")
+      ) {
+        // This is a validation error - the alert was already shown in saveRoute
+        // Just return without showing another alert
+        return;
+      }
+
       // Handle network errors gracefully
       if (
         error?.code === "ERR_NETWORK" ||

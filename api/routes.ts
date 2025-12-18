@@ -14,6 +14,8 @@ const createRoute = async (routeData: {
   distance: number;
   duration: number;
   points: any[];
+  isPublic: boolean;
+  routeType: string;
 }): Promise<IRecordedRoute> => {
   try {
     const response = await api.post<IRecordedRoute>("/routes", routeData);
