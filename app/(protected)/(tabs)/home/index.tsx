@@ -311,27 +311,30 @@ const HomePage = () => {
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Map</Text>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.recordButton,
-              isRecording && styles.recordButtonActive,
-              currentRoute && !isRecording && styles.recordButtonDisabled,
-            ]}
-            onPress={isRecording ? handleStopRecording : handleStartRecording}
-            disabled={currentRoute !== null && !isRecording}
-          >
-            <Ionicons
-              name={isRecording ? "stop-circle" : "stop"}
-              size={28}
-              color={
-                currentRoute && !isRecording
-                  ? COLORS.lightText
-                  : isRecording
-                  ? COLORS.white
-                  : COLORS.desertOrange
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                isRecording && styles.recordButtonActive,
+                currentRoute && !isRecording && styles.recordButtonDisabled,
+              ]}
+              onPress={
+                currentRoute ? handleStopRecording : handleStartRecording
               }
-            />
-          </TouchableOpacity>
+            >
+              <Ionicons
+                name={currentRoute ? "stop-circle" : "play-circle"}
+                size={28}
+                color={
+                  currentRoute && !isRecording
+                    ? COLORS.lightText
+                    : isRecording
+                    ? COLORS.white
+                    : COLORS.desertOrange
+                }
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Map */}
@@ -476,18 +479,17 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
     alignItems: "flex-start",
+    justifyContent: "center",
   },
   headerCenter: {
-    // position: "absolute",
-    left: 0,
-    right: 0,
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 0,
   },
   headerRight: {
     flex: 1,
     alignItems: "flex-end",
+    justifyContent: "center",
   },
   headerTitle: {
     fontSize: 28,

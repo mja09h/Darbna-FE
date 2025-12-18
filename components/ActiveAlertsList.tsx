@@ -9,7 +9,9 @@ import {
   Alert,
   Linking,
   RefreshControl,
+  Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { getActiveSOSAlerts, offerHelp, cancelHelp } from "../api/sos";
 import { ISOSAlert } from "../types/sos";
@@ -19,6 +21,25 @@ import { formatDistanceToNow } from "date-fns";
 
 const formatDistance = (m: number) =>
   m < 1000 ? `${Math.round(m)} m away` : `${(m / 1000).toFixed(1)} km away`;
+
+const formatCoordinates = (coordinates: [number, number]) => {
+  const [longitude, latitude] = coordinates;
+  return `${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+};
+
+const openLocationInMaps = (coordinates: [number, number]) => {
+  const [longitude, latitude] = coordinates;
+  const url = Platform.select({
+    ios: `maps://app?daddr=${latitude},${longitude}`,
+    android: `geo:${latitude},${longitude}?q=${latitude},${longitude}`,
+  });
+  if (url) {
+    Linking.openURL(url).catch((err) => {
+      console.error("Error opening maps:", err);
+      Alert.alert("Error", "Could not open maps app");
+    });
+  }
+};
 
 const ActiveAlertsList = () => {
   const { user } = useAuth();
@@ -142,6 +163,8 @@ const ActiveAlertsList = () => {
       keyExtractor={(item) => item._id}
       renderItem={({ item }) => {
         const isHelping = (item.helpers || []).includes(user!._id);
+        const coordinatesText = formatCoordinates(item.location.coordinates);
+
         return (
           <View style={styles.alertCard}>
             <View style={styles.alertInfo}>
@@ -151,7 +174,20 @@ const ActiveAlertsList = () => {
               <Text style={styles.distance}>
                 {formatDistance(item.distance)}
               </Text>
-              {/* FIXED: Display time since alert was sent */}
+              <TouchableOpacity
+                style={styles.locationRow}
+                onPress={() => openLocationInMaps(item.location.coordinates)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location" size={14} color="#666666" />
+                <Text style={styles.locationText}>{coordinatesText}</Text>
+                <Ionicons
+                  name="map-outline"
+                  size={16}
+                  color="#D9534F"
+                  style={styles.mapIcon}
+                />
+              </TouchableOpacity>
               <Text style={styles.timeAgo}>
                 {formatDistanceToNow(new Date(item.createdAt))} ago
               </Text>
@@ -210,7 +246,20 @@ const styles = StyleSheet.create({
     color: "#666666",
     marginBottom: 4,
   },
-  // FIXED: Added time ago styling
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    gap: 4,
+  },
+  locationText: {
+    fontSize: 12,
+    color: "#666666",
+    marginRight: 4,
+  },
+  mapIcon: {
+    marginLeft: -2,
+  },
   timeAgo: {
     fontSize: 12,
     color: "#999999",
@@ -218,10 +267,13 @@ const styles = StyleSheet.create({
   },
   helpButton: {
     backgroundColor: "#D9534F",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
     marginLeft: 12,
+    minWidth: 80,
+    alignItems: "center",
+    justifyContent: "center",
   },
   helpButtonActive: {
     backgroundColor: "#666666",

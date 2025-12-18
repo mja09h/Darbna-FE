@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import api from "../../../../api/index";
 import { IRecordedRoute } from "../../../../types/route";
 import { useLanguage } from "../../../../context/LanguageContext";
@@ -35,12 +35,11 @@ const CommunityPage = () => {
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
   const { units } = useSettings();
-  const { deleteRoute } = useRouteRecording();
-  const { user } = useAuth();
 
   const [routes, setRoutes] = useState<IRecordedRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationData>({
     total: 0,
     page: 1,
@@ -51,6 +50,13 @@ const CommunityPage = () => {
   useEffect(() => {
     loadPublicRoutes();
   }, []);
+
+  // Reset expanded state when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setExpandedRouteId(null);
+    }, [])
+  );
 
   const loadPublicRoutes = async (page: number = 1) => {
     try {
@@ -147,150 +153,149 @@ const CommunityPage = () => {
     );
   };
 
-  const handleDeleteRoute = (routeId: string, routeUserId: string) => {
-    // Only allow deletion if user is the owner
-    if (!user || user._id !== routeUserId) {
-      Alert.alert(
-        t.common.error,
-        "You can only delete routes that you created."
-      );
-      return;
+  const handleRoutePress = (routeId: string) => {
+    if (expandedRouteId === routeId) {
+      setExpandedRouteId(null);
+    } else {
+      setExpandedRouteId(routeId);
     }
-
-    Alert.alert(t.common.delete, t.savedRoutes.deleteConfirm, [
-      {
-        text: t.common.cancel,
-        onPress: () => {},
-        style: "cancel",
-      },
-      {
-        text: t.common.delete,
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteRoute(routeId);
-
-            // Remove from local state
-            setRoutes((prev) => prev.filter((r) => r._id !== routeId));
-
-            Alert.alert(t.common.success, t.savedRoutes.deleteSuccess);
-
-            // Refresh routes
-            await loadPublicRoutes(1);
-          } catch (error: any) {
-            const errorMessage =
-              error?.response?.data?.message ||
-              error?.message ||
-              t.savedRoutes.deleteFailed;
-
-            Alert.alert(t.common.error, errorMessage);
-          }
-        },
-      },
-    ]);
   };
 
-  const renderRouteCard = ({ item }: { item: IRecordedRoute }) => (
-    <TouchableOpacity
-      style={[styles.routeCard, { backgroundColor: colors.surface }]}
-      onPress={() => {
-        // TODO: Navigate to route detail page
-        Alert.alert("View Route", "Route detail page coming soon");
-      }}
-    >
-      {/* Screenshot */}
-      {item.screenshot && (
-        <Image
-          source={{ uri: item.screenshot.url }}
-          style={styles.routeImage}
-        />
-      )}
 
-      {/* Route Info */}
-      <View style={styles.routeInfo}>
-        <View style={styles.headerRow}>
-          <View style={styles.titleContainer}>
+  const renderRouteCard = ({ item }: { item: IRecordedRoute }) => {
+    const isExpanded = expandedRouteId === item._id;
+
+    return (
+      <View
+        style={[
+          styles.routeCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+          isExpanded && styles.routeCardExpanded,
+        ]}
+      >
+        {/* Collapsed Card Header */}
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={() => handleRoutePress(item._id)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cardHeaderContent}>
             <Text style={[styles.routeName, { color: colors.text }]}>
               {item.name}
             </Text>
-            <Text style={[styles.routeType, { color: colors.primary }]}>
-              {getRouteTypeLabel(item.routeType)}
-            </Text>
+            <Ionicons
+              name={isExpanded ? "chevron-up" : "chevron-down"}
+              size={20}
+              color={colors.textSecondary}
+            />
           </View>
-          <View style={styles.userBadge}>
-            <Ionicons name="person-circle" size={32} color={colors.primary} />
-          </View>
-        </View>
+        </TouchableOpacity>
 
-        {item.description && (
-          <Text
-            style={[styles.routeDescription, { color: colors.textSecondary }]}
-            numberOfLines={2}
-          >
-            {item.description}
-          </Text>
+        {/* Expanded Card Content */}
+        {isExpanded && (
+          <View style={styles.expandedContent}>
+            {/* Screenshot */}
+            {item.screenshot && (
+              <Image
+                source={{ uri: item.screenshot.url }}
+                style={styles.routeImage}
+              />
+            )}
+
+            {/* Route Info */}
+            <View style={styles.routeInfo}>
+              <View style={styles.headerRow}>
+                <View style={styles.titleContainer}>
+                  <Text style={[styles.routeType, { color: colors.primary }]}>
+                    {getRouteTypeLabel(item.routeType)}
+                  </Text>
+                </View>
+                <View style={styles.userBadge}>
+                  <Ionicons
+                    name="person-circle"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <Text
+                    style={[styles.usernameText, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item.user?.username || "Unknown User"}
+                  </Text>
+                </View>
+              </View>
+
+              {item.description && (
+                <Text
+                  style={[
+                    styles.routeDescription,
+                    { color: colors.textSecondary },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {item.description}
+                </Text>
+              )}
+
+              {/* Stats */}
+              <View
+                style={[styles.statsContainer, { borderColor: colors.border }]}
+              >
+                <View style={styles.statItem}>
+                  <Ionicons
+                    name="navigate-outline"
+                    size={14}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.statText, { color: colors.text }]}>
+                    {formatDistance(item.distance)}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Ionicons name="time-outline" size={14} color={colors.primary} />
+                  <Text style={[styles.statText, { color: colors.text }]}>
+                    {formatTime(item.duration)}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={14}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.statText, { color: colors.text }]}>
+                    {formatDate(item.createdAt)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.viewButton, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    // TODO: Navigate to route detail page
+                    Alert.alert("View Route", "Route detail page coming soon");
+                  }}
+                >
+                  <Text
+                    style={[styles.viewButtonText, { color: colors.background }]}
+                  >
+                    {t.savedRoutes.viewFullMap}
+                  </Text>
+                  <Ionicons
+                    name={isRTL ? "arrow-back" : "arrow-forward"}
+                    size={14}
+                    color={colors.background}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         )}
-
-        {/* Stats */}
-        <View style={[styles.statsContainer, { borderColor: colors.border }]}>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="navigate-outline"
-              size={14}
-              color={colors.primary}
-            />
-            <Text style={[styles.statText, { color: colors.text }]}>
-              {formatDistance(item.distance)}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="time-outline" size={14} color={colors.primary} />
-            <Text style={[styles.statText, { color: colors.text }]}>
-              {formatTime(item.duration)}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={14}
-              color={colors.primary}
-            />
-            <Text style={[styles.statText, { color: colors.text }]}>
-              {formatDate(item.createdAt)}
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.viewButton, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              // TODO: Navigate to route detail page
-              Alert.alert("View Route", "Route detail page coming soon");
-            }}
-          >
-            <Text style={[styles.viewButtonText, { color: colors.background }]}>
-              {t.savedRoutes.viewFullMap}
-            </Text>
-            <Ionicons
-              name={isRTL ? "arrow-back" : "arrow-forward"}
-              size={14}
-              color={colors.background}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.deleteButton, { backgroundColor: "#D32F2F" }]}
-            onPress={() => handleDeleteRoute(item._id, item.userId)}
-          >
-            <Ionicons name="trash-outline" size={16} color="#fff" />
-            <Text style={styles.deleteButtonText}>{t.common.delete}</Text>
-          </TouchableOpacity>
-        </View>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (loading && routes.length === 0) {
     return (
@@ -390,11 +395,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   listContainer: {
-    padding: 15,
+    padding: 20,
+    paddingTop: 30,
+    gap: 16,
   },
   routeCard: {
-    borderRadius: 12,
-    marginBottom: 15,
+    borderRadius: 16,
+    borderWidth: 1,
     overflow: "hidden",
     elevation: 3,
     shadowColor: "#000",
@@ -402,13 +409,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  routeCardExpanded: {
+    marginBottom: 8,
+  },
+  cardHeader: {
+    padding: 12,
+  },
+  cardHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  routeName: {
+    fontSize: 16,
+    fontWeight: "600",
+    flex: 1,
+  },
+  expandedContent: {
+    padding: 16,
+    paddingTop: 0,
+    gap: 16,
+  },
   routeImage: {
     width: "100%",
     height: 150,
     backgroundColor: "#E9DCCF",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   routeInfo: {
-    padding: 15,
+    padding: 0,
   },
   headerRow: {
     flexDirection: "row",
@@ -419,17 +449,20 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
   },
-  routeName: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
   routeType: {
     fontSize: 12,
     fontWeight: "600",
   },
   userBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 10,
+    gap: 6,
+  },
+  usernameText: {
+    fontSize: 14,
+    fontWeight: "500",
+    maxWidth: 120,
   },
   routeDescription: {
     fontSize: 13,
@@ -470,21 +503,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginTop: 8,
-  },
-  deleteButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  deleteButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    marginLeft: 6,
-    fontSize: 12,
   },
   emptyContainer: {
     flex: 1,
