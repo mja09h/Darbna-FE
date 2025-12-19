@@ -6,20 +6,17 @@ import {
   Text,
   TouchableOpacity,
   SafeAreaView,
-  Image,
   ActivityIndicator,
-  Alert,
   RefreshControl,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import api from "../../../../api/index";
 import { IRecordedRoute } from "../../../../types/route";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
-import { useRouteRecording } from "../../../../context/RouteRecordingContext";
-import { useAuth } from "../../../../context/AuthContext";
+import RouteDetailModal from "../../../../components/RouteDetailModal";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -30,8 +27,39 @@ interface PaginationData {
   pages: number;
 }
 
+// Convert IRecordedRoute to ISavedRoute format for the modal
+const convertToSavedRoute = (route: IRecordedRoute): any => {
+  return {
+    _id: route._id,
+    routeId: {
+      _id: route._id,
+      name: route.name,
+      distance: route.distance,
+      duration: route.duration,
+      routeType: route.routeType,
+      description: route.description,
+      screenshot: route.screenshot,
+      images: route.images,
+      path: route.path,
+      points: route.points,
+      // Add default values for modal fields
+      elevationGain: 0,
+      estimatedTime: undefined,
+      difficulty: "Moderate",
+      rating: 4.0,
+      location: "Community Route",
+      terrain: "trail",
+    },
+    folderId: {
+      _id: "community",
+      name: "Community",
+    },
+    isFavorite: false,
+    savedAt: route.createdAt,
+  };
+};
+
 const CommunityPage = () => {
-  const router = useRouter();
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
   const { units } = useSettings();
@@ -39,7 +67,8 @@ const CommunityPage = () => {
   const [routes, setRoutes] = useState<IRecordedRoute[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [expandedRouteId, setExpandedRouteId] = useState<string | null>(null);
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<any | null>(null);
   const [pagination, setPagination] = useState<PaginationData>({
     total: 0,
     page: 1,
@@ -51,10 +80,11 @@ const CommunityPage = () => {
     loadPublicRoutes();
   }, []);
 
-  // Reset expanded state when screen comes into focus
+  // Reset modal when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      setExpandedRouteId(null);
+      setShowRouteModal(false);
+      setSelectedRoute(null);
     }, [])
   );
 
@@ -111,31 +141,17 @@ const CommunityPage = () => {
     }
   };
 
-  const formatDistance = (km: number) => {
+  const formatDistance = (km: number): string => {
     if (units === "miles") {
       const miles = km * 0.621371;
-      if (miles < 1) {
-        return `${(miles * 5280).toFixed(0)} ft`;
-      }
-      return `${miles.toFixed(2)} mi`;
+      return miles < 1
+        ? `${(miles * 5280).toFixed(0)} ft`
+        : `${miles.toFixed(2)} mi`;
     }
-    if (km < 1) {
-      return `${(km * 1000).toFixed(0)}m`;
-    }
-    return `${km.toFixed(2)}km`;
+    return km < 1 ? `${(km * 1000).toFixed(0)} m` : `${km.toFixed(2)} km`;
   };
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(secs).padStart(2, "0")}`;
-  };
-
-  const formatDate = (date: Date | string) => {
+  const formatDate = (date: Date | string): string => {
     const d = typeof date === "string" ? new Date(date) : date;
     return d.toLocaleDateString(isRTL ? "ar-EG" : "en-US", {
       month: "short",
@@ -144,156 +160,126 @@ const CommunityPage = () => {
     });
   };
 
-  const getRouteTypeLabel = (routeType?: string): string => {
-    if (!routeType) return t.savedRoutes.routeTypes.Other;
-    return (
-      t.savedRoutes.routeTypes[
-        routeType as keyof typeof t.savedRoutes.routeTypes
-      ] || routeType
-    );
-  };
-
-  const handleRoutePress = (routeId: string) => {
-    if (expandedRouteId === routeId) {
-      setExpandedRouteId(null);
-    } else {
-      setExpandedRouteId(routeId);
+  const getRouteIcon = (routeType?: string): string => {
+    switch (routeType) {
+      case "Running":
+        return "fitness-outline";
+      case "Cycling":
+        return "bicycle-outline";
+      case "Walking":
+        return "walk-outline";
+      case "Hiking":
+        return "trail-sign-outline";
+      default:
+        return "map-outline";
     }
   };
 
+  const handleRoutePress = (route: IRecordedRoute) => {
+    const convertedRoute = convertToSavedRoute(route);
+    setSelectedRoute(convertedRoute);
+    setShowRouteModal(true);
+  };
+
+  const handleCloseRouteModal = () => {
+    setShowRouteModal(false);
+    setSelectedRoute(null);
+  };
 
   const renderRouteCard = ({ item }: { item: IRecordedRoute }) => {
-    const isExpanded = expandedRouteId === item._id;
-
     return (
-      <View
-        style={[
-          styles.routeCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-          isExpanded && styles.routeCardExpanded,
-        ]}
+      <TouchableOpacity
+        style={styles.routeItemContainer}
+        activeOpacity={0.8}
+        onPress={() => handleRoutePress(item)}
       >
-        {/* Collapsed Card Header */}
-        <TouchableOpacity
-          style={styles.cardHeader}
-          onPress={() => handleRoutePress(item._id)}
-          activeOpacity={0.7}
+        <View
+          style={[
+            styles.routeCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
         >
-          <View style={styles.cardHeaderContent}>
-            <Text style={[styles.routeName, { color: colors.text }]}>
+          {/* Route Icon */}
+          <View
+            style={[
+              styles.iconContainer,
+              {
+                backgroundColor: colors.primaryLight,
+                borderColor: colors.primary,
+              },
+            ]}
+          >
+            <Ionicons
+              name={getRouteIcon(item.routeType) as any}
+              size={26}
+              color={colors.primary}
+            />
+          </View>
+
+          {/* Route Info */}
+          <View style={styles.infoContainer}>
+            <Text
+              style={[styles.routeName, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {item.name}
             </Text>
+            <View style={styles.metadataRow}>
+              <View style={styles.metadataItem}>
+                <Ionicons
+                  name="navigate-outline"
+                  size={14}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[styles.metadata, { color: colors.textSecondary }]}
+                >
+                  {formatDistance(item.distance)}
+                </Text>
+              </View>
+              <View style={styles.metadataItem}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={14}
+                  color={colors.textSecondary}
+                />
+                <Text
+                  style={[styles.metadata, { color: colors.textSecondary }]}
+                >
+                  {formatDate(item.createdAt)}
+                </Text>
+              </View>
+            </View>
+            {/* User Badge */}
+            {item.user && (
+              <View
+                style={[
+                  styles.userBadge,
+                  { backgroundColor: colors.primaryLight },
+                ]}
+              >
+                <Ionicons
+                  name="person-circle"
+                  size={12}
+                  color={colors.primary}
+                />
+                <Text style={[styles.username, { color: colors.primary }]}>
+                  {item.user.username || "Unknown User"}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Chevron Icon */}
+          <View style={styles.chevronContainer}>
             <Ionicons
-              name={isExpanded ? "chevron-up" : "chevron-down"}
+              name="chevron-forward"
               size={20}
               color={colors.textSecondary}
             />
           </View>
-        </TouchableOpacity>
-
-        {/* Expanded Card Content */}
-        {isExpanded && (
-          <View style={styles.expandedContent}>
-            {/* Screenshot */}
-            {item.screenshot && (
-              <Image
-                source={{ uri: item.screenshot.url }}
-                style={styles.routeImage}
-              />
-            )}
-
-            {/* Route Info */}
-            <View style={styles.routeInfo}>
-              <View style={styles.headerRow}>
-                <View style={styles.titleContainer}>
-                  <Text style={[styles.routeType, { color: colors.primary }]}>
-                    {getRouteTypeLabel(item.routeType)}
-                  </Text>
-                </View>
-                <View style={styles.userBadge}>
-                  <Ionicons
-                    name="person-circle"
-                    size={24}
-                    color={colors.primary}
-                  />
-                  <Text
-                    style={[styles.usernameText, { color: colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {item.user?.username || "Unknown User"}
-                  </Text>
-                </View>
-              </View>
-
-              {item.description && (
-                <Text
-                  style={[
-                    styles.routeDescription,
-                    { color: colors.textSecondary },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {item.description}
-                </Text>
-              )}
-
-              {/* Stats */}
-              <View
-                style={[styles.statsContainer, { borderColor: colors.border }]}
-              >
-                <View style={styles.statItem}>
-                  <Ionicons
-                    name="navigate-outline"
-                    size={14}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.statText, { color: colors.text }]}>
-                    {formatDistance(item.distance)}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons name="time-outline" size={14} color={colors.primary} />
-                  <Text style={[styles.statText, { color: colors.text }]}>
-                    {formatTime(item.duration)}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={14}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.statText, { color: colors.text }]}>
-                    {formatDate(item.createdAt)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.viewButton, { backgroundColor: colors.primary }]}
-                  onPress={() => {
-                    // TODO: Navigate to route detail page
-                    Alert.alert("View Route", "Route detail page coming soon");
-                  }}
-                >
-                  <Text
-                    style={[styles.viewButtonText, { color: colors.background }]}
-                  >
-                    {t.savedRoutes.viewFullMap}
-                  </Text>
-                  <Ionicons
-                    name={isRTL ? "arrow-back" : "arrow-forward"}
-                    size={14}
-                    color={colors.background}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -302,7 +288,15 @@ const CommunityPage = () => {
       <SafeAreaView
         style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}
       >
-        <View style={styles.loadingContainer}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Community Routes</Text>
+        </View>
+        <View
+          style={[
+            styles.loadingContainer,
+            { backgroundColor: colors.background },
+          ]}
+        >
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
@@ -327,11 +321,14 @@ const CommunityPage = () => {
             { backgroundColor: colors.background },
           ]}
         >
-          <Ionicons
-            name="globe-outline"
-            size={64}
-            color={colors.textSecondary}
-          />
+          <View
+            style={[
+              styles.emptyIconContainer,
+              { backgroundColor: colors.surface },
+            ]}
+          >
+            <Ionicons name="globe-outline" size={80} color={colors.primary} />
+          </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
             No Public Routes Yet
           </Text>
@@ -340,31 +337,40 @@ const CommunityPage = () => {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={routes}
-          renderItem={renderRouteCard}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.primary}
-            />
-          }
-          onEndReachedThreshold={0.5}
-          onEndReached={handleLoadMore}
-          ListFooterComponent={
-            loading ? (
-              <ActivityIndicator
-                size="small"
-                color={colors.primary}
-                style={styles.footerLoader}
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <FlatList
+            data={routes}
+            renderItem={renderRouteCard}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
               />
-            ) : null
-          }
-        />
+            }
+            onEndReachedThreshold={0.5}
+            onEndReached={handleLoadMore}
+            ListFooterComponent={
+              loading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={styles.footerLoader}
+                />
+              ) : null
+            }
+          />
+        </View>
       )}
+
+      <RouteDetailModal
+        visible={showRouteModal}
+        onClose={handleCloseRouteModal}
+        route={selectedRoute}
+      />
     </SafeAreaView>
   );
 };
@@ -381,8 +387,9 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#f5e6d3",
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 14,
@@ -395,131 +402,105 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   listContainer: {
-    padding: 20,
-    paddingTop: 30,
-    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+
+  // Route Item Styles (matching saved page)
+  routeItemContainer: {
+    marginBottom: 16,
   },
   routeCard: {
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    overflow: "hidden",
-    elevation: 3,
+    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  routeCardExpanded: {
-    marginBottom: 8,
-  },
-  cardHeader: {
-    padding: 12,
-  },
-  cardHeaderContent: {
-    flexDirection: "row",
+  iconContainer: {
+    marginRight: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
+    borderWidth: 2,
+  },
+  infoContainer: {
+    flex: 1,
   },
   routeName: {
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
+    fontSize: 17,
+    fontWeight: "700",
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
-  expandedContent: {
-    padding: 16,
-    paddingTop: 0,
-    gap: 16,
-  },
-  routeImage: {
-    width: "100%",
-    height: 150,
-    backgroundColor: "#E9DCCF",
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  routeInfo: {
-    padding: 0,
-  },
-  headerRow: {
+  metadataRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+    gap: 16,
     marginBottom: 8,
   },
-  titleContainer: {
-    flex: 1,
+  metadataItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  routeType: {
-    fontSize: 12,
-    fontWeight: "600",
+  metadata: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   userBadge: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 10,
-    gap: 6,
+    alignSelf: "flex-start",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 4,
   },
-  usernameText: {
-    fontSize: 14,
-    fontWeight: "500",
-    maxWidth: 120,
-  },
-  routeDescription: {
-    fontSize: 13,
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  statText: {
+  username: {
     fontSize: 12,
-    marginLeft: 6,
-    fontWeight: "500",
-  },
-  viewButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  viewButtonText: {
     fontWeight: "600",
-    marginRight: 6,
-    fontSize: 14,
   },
-  actionRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
+  chevronContainer: {
+    marginLeft: 8,
   },
+
+  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginTop: 16,
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    opacity: 0.6,
   },
-  emptyText: {
-    fontSize: 14,
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "700",
     marginTop: 8,
     textAlign: "center",
-    lineHeight: 20,
+  },
+  emptyText: {
+    fontSize: 15,
+    marginTop: 8,
+    textAlign: "center",
+    lineHeight: 22,
   },
   footerLoader: {
     marginVertical: 20,

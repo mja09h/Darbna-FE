@@ -26,10 +26,6 @@ const ProfileScreen = () => {
     router.push("/(protected)/(tabs)/profile/(settings)");
   };
 
-  const handleEditProfilePress = () => {
-    router.push("/(protected)/(tabs)/profile/edit");
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -46,6 +42,14 @@ const ProfileScreen = () => {
 
       {/* Header Section */}
       <View style={styles.header}>
+        {/* Settings Icon - Top Left */}
+        <TouchableOpacity
+          style={styles.settingsIconButton}
+          onPress={handleSettingsPress}
+        >
+          <Ionicons name="settings-outline" size={24} color="#f5e6d3" />
+        </TouchableOpacity>
+
         <Text style={styles.headerTitle}>{t.tabs.profile}</Text>
 
         <View style={styles.profileHeader}>
@@ -91,18 +95,6 @@ const ProfileScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.editButton, { borderColor: colors.primary }]}
-              onPress={handleEditProfilePress}
-            >
-              <Text style={[styles.editButtonText, { color: colors.primary }]}>
-                {t.profile.editProfile}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Bio */}
           {user?.bio ? (
             <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -197,35 +189,6 @@ const ProfileScreen = () => {
               color={colors.textSecondary}
             />
           </TouchableOpacity>
-
-          {/* Settings Link */}
-          <TouchableOpacity
-            style={[styles.settingsButton, { backgroundColor: colors.surface }]}
-            onPress={handleSettingsPress}
-          >
-            <View style={styles.settingsButtonContent}>
-              <View
-                style={[
-                  styles.iconBox,
-                  { backgroundColor: colors.primaryLight },
-                ]}
-              >
-                <Ionicons
-                  name="settings-outline"
-                  size={22}
-                  color={colors.primary}
-                />
-              </View>
-              <Text style={[styles.settingsButtonText, { color: colors.text }]}>
-                {t.settings.title}
-              </Text>
-            </View>
-            <Ionicons
-              name={isRTL ? "chevron-back" : "chevron-forward"}
-              size={22}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
         </ScrollView>
       </View>
     </View>
@@ -243,6 +206,14 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingHorizontal: 20,
     alignItems: "center",
+    position: "relative",
+  },
+  settingsIconButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    padding: 8,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 20,
@@ -317,19 +288,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 30,
     gap: 20,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  editButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  editButtonText: {
-    fontWeight: "600",
   },
   section: {
     padding: 20,

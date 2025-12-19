@@ -3,165 +3,186 @@ import { User } from "../types/User";
 
 // Get current authenticated user
 const getCurrentUser = async (): Promise<User> => {
-    try {
-        const response = await api.get("/auth/me");
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get("/auth/me");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get all users
 const getUsers = async (): Promise<User[]> => {
-    try {
-        const response = await api.get("/users");
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get("/users");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get user by ID
 const getUserById = async (id: string): Promise<User> => {
-    try {
-        const response = await api.get(`/users/${id}`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get(`/users/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get user by username
 const getUserByUsername = async (username: string): Promise<User> => {
-    try {
-        const response = await api.get(`/users/username/${username}`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get(`/users/username/${username}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get user profile
 const getUserProfile = async (id: string): Promise<User> => {
-    try {
-        const response = await api.get(`/users/${id}/profile`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get(`/users/${id}/profile`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Update user
 interface UpdateUserData {
-    name?: string;
-    country?: string;
-    username?: string;
-    email?: string;
-    password?: string;
-    bio?: string;
-    profilePicture?: string | any;
-    coverPicture?: string | any;
-    phone?: string;
+  name?: string;
+  country?: string;
+  username?: string;
+  email?: string;
+  password?: string;
+  bio?: string;
+  profilePicture?: string | any;
+  coverPicture?: string | any;
+  phone?: string;
 }
 
 const updateUser = async (id: string, data: UpdateUserData) => {
-    try {
-        const formData = new FormData();
-        formData.append('name', data.name || '');
-        formData.append('country', data.country || '');
-        formData.append('bio', data.bio || '');
-        formData.append('phone', data.phone || '');
-        if (data.profilePicture && typeof data.profilePicture === 'object') {
-            console.log('data.profilePicture is an object');
-            formData.append('profilePicture', {
-                uri: data.profilePicture.uri,
-                name: data.profilePicture.fileName,
-                type: "image/jpeg",
-            } as any);
-        }
+  try {
+    const formData = new FormData();
 
-        const response = await api.put(`/users/${id}`, formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.log('error', error);
-        throw error;
+    // ✅ FIXED: Only append fields that have actual values
+    if (data.name) {
+      formData.append("name", data.name);
     }
+    if (data.country) {
+      formData.append("country", data.country);
+    }
+    if (data.bio) {
+      formData.append("bio", data.bio);
+    }
+    if (data.phone) {
+      formData.append("phone", data.phone);
+    }
+
+    // Handle profile picture
+    if (data.profilePicture && typeof data.profilePicture === "object") {
+      console.log("data.profilePicture is an object");
+      formData.append("profilePicture", {
+        uri: data.profilePicture.uri,
+        name: data.profilePicture.fileName || "profile.jpg",
+        type: "image/jpeg",
+      } as any);
+    }
+
+    const response = await api.put(`/users/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.log("error", error);
+    throw error;
+  }
 };
 
 // Delete user
 const deleteUser = async (id: string): Promise<void> => {
-    try {
-        await api.delete(`/users/${id}`);
-    } catch (error) {
-        throw error;
-    }
+  try {
+    await api.delete(`/users/${id}`);
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Update password
 const updatePassword = async (id: string, password: string): Promise<void> => {
-    try {
-        await api.put(`/users/${id}/password`, { password });
-    } catch (error) {
-        throw error;
-    }
+  try {
+    await api.put(`/users/${id}/password`, { password });
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Follow user
-const followUser = async (targetUserId: string, currentUserId: string): Promise<User> => {
-    try {
-        const response = await api.post(`/users/${targetUserId}/follow`, { userId: currentUserId });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+const followUser = async (
+  targetUserId: string,
+  currentUserId: string
+): Promise<User> => {
+  try {
+    const response = await api.post(`/users/${targetUserId}/follow`, {
+      userId: currentUserId,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Unfollow user
-const unfollowUser = async (targetUserId: string, currentUserId: string): Promise<User> => {
-    try {
-        const response = await api.post(`/users/${targetUserId}/unfollow`, { userId: currentUserId });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+const unfollowUser = async (
+  targetUserId: string,
+  currentUserId: string
+): Promise<User> => {
+  try {
+    const response = await api.post(`/users/${targetUserId}/unfollow`, {
+      userId: currentUserId,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get followers
 const getFollowers = async (id: string): Promise<string[]> => {
-    try {
-        const response = await api.get(`/users/${id}/followers`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get(`/users/${id}/followers`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 // Get following
 const getFollowing = async (id: string): Promise<string[]> => {
-    try {
-        const response = await api.get(`/users/${id}/following`);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+  try {
+    const response = await api.get(`/users/${id}/following`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 export {
-    getCurrentUser,
-    getUsers,
-    getUserById,
-    getUserByUsername,
-    getUserProfile,
-    updateUser,
-    updatePassword,
-    deleteUser,
-    followUser,
-    unfollowUser,
-    getFollowers,
-    getFollowing,
+  getCurrentUser,
+  getUsers,
+  getUserById,
+  getUserByUsername,
+  getUserProfile,
+  updateUser,
+  updatePassword,
+  deleteUser,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
 };
-

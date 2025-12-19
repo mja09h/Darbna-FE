@@ -13,16 +13,18 @@ import {
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
-import { useLanguage } from "../../../../context/LanguageContext";
-import { useTheme } from "../../../../context/ThemeContext";
-import { useAuth } from "../../../../context/AuthContext";
+import { useLanguage } from "../../../../../context/LanguageContext";
+import { useTheme } from "../../../../../context/ThemeContext";
+import { useAuth } from "../../../../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import { updateUser } from "../../../../api/user";
-import { getCountries } from "../../../../data/Countries";
-import CustomAlert, { AlertButton } from "../../../../components/CustomAlert";
+import { updateUser } from "../../../../../api/user";
+import { getCountries } from "../../../../../data/Countries";
+import CustomAlert, {
+  AlertButton,
+} from "../../../../../components/CustomAlert";
 import * as ImagePicker from "expo-image-picker";
 
-const EditProfile = () => {
+const EditProfileSettings = () => {
   // --- Hooks ---
   const router = useRouter();
   const { t, isRTL, language } = useLanguage();
@@ -30,11 +32,9 @@ const EditProfile = () => {
   const { user, updateUserState } = useAuth();
 
   // --- Data ---
-  // Get localized countries list
   const countries = getCountries(language as "en" | "ar");
 
   // --- Local State ---
-  // Form fields
   const [name, setName] = useState(user?.name || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [phone, setPhone] = useState(user?.phone || "");
@@ -75,7 +75,6 @@ const EditProfile = () => {
 
   // --- Handlers ---
   const pickImage = async () => {
-    // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       showAlert(
@@ -96,7 +95,6 @@ const EditProfile = () => {
 
     if (!result.canceled) {
       setProfileImage(result.assets[0].uri);
-      // We'll pass the whole asset object to the API which will handle the FormData conversion
       setBase64Image(result.assets[0] as any);
     }
   };
@@ -106,24 +104,41 @@ const EditProfile = () => {
 
     setLoading(true);
     try {
-      const updateData: any = {
-        name,
-        bio,
-        phone,
-        country,
-      };
+      // ✅ FIXED: Only include fields that have values
+      const updateData: any = {};
 
+      if (name && name !== user.name) {
+        updateData.name = name;
+      }
+      if (bio && bio !== user.bio) {
+        updateData.bio = bio;
+      }
+      if (phone && phone !== user.phone) {
+        updateData.phone = phone;
+      }
+      if (country && country !== user.country) {
+        updateData.country = country;
+      }
       if (base64Image) {
-        // base64Image state currently holds the image asset object if picked,
-        // or a string if it was base64 encoded previously.
-        // The API now expects the asset object for FormData upload.
         updateData.profilePicture = base64Image;
+      }
+
+      // Only call API if there are changes
+      if (Object.keys(updateData).length === 0) {
+        showAlert(t.common.error, "No changes to save", "error", [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]);
+        setLoading(false);
+        return;
       }
 
       const updatedUser = await updateUser(user._id, updateData);
 
       // Update local context
-      updateUserState(updatedUser);
+      updateUserState(updatedUser.data || updatedUser);
 
       showAlert(t.common.success, t.profile.profileUpdated, "success", [
         {
@@ -214,7 +229,7 @@ const EditProfile = () => {
                 { backgroundColor: colors.primary },
               ]}
             >
-              <Ionicons name="camera" size={16} color={colors.primaryLight} />
+              <Ionicons name="camera" size={16} color="#fff" />
             </View>
           </TouchableOpacity>
           <Text style={[styles.changePhotoText, { color: colors.primary }]}>
@@ -328,59 +343,61 @@ const EditProfile = () => {
       <Modal
         visible={isCountryModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
+        transparent={true}
+        onRequestClose={() => setIsCountryModalVisible(false)}
       >
-        <SafeAreaView
-          style={[
-            styles.modalContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View
-            style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+        <View style={styles.modalOverlay}>
+          <SafeAreaView
+            style={[
+              styles.modalContainer,
+              { backgroundColor: colors.background },
+            ]}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {t.auth.selectCountry}
-            </Text>
-            <TouchableOpacity onPress={() => setIsCountryModalVisible(false)}>
-              <Text style={{ color: colors.primary, fontSize: 16 }}>
-                {t.common.cancel}
+            <View
+              style={[styles.modalHeader, { borderBottomColor: colors.border }]}
+            >
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {t.auth.selectCountry}
               </Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity onPress={() => setIsCountryModalVisible(false)}>
+                <Ionicons name="close" size={28} color={colors.text} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.searchContainer}>
-            <Ionicons
-              name="search"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.searchIcon}
-            />
-            <TextInput
-              style={[
-                styles.searchInput,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  textAlign: isRTL ? "right" : "left",
-                },
-              ]}
-              placeholder={t.auth.searchCountry}
-              placeholderTextColor={colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
+            <View style={styles.searchContainer}>
+              <Ionicons
+                name="search"
+                size={20}
+                color={colors.textSecondary}
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={[
+                  styles.searchInput,
+                  {
+                    color: colors.text,
+                    backgroundColor: colors.surface,
+                    textAlign: isRTL ? "right" : "left",
+                  },
+                ]}
+                placeholder={t.auth.searchCountry}
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
 
-          <FlatList
-            data={filteredCountries}
-            renderItem={renderCountryItem}
-            keyExtractor={(item) => item}
-            contentContainerStyle={styles.listContent}
-          />
-        </SafeAreaView>
+            <FlatList
+              data={filteredCountries}
+              renderItem={renderCountryItem}
+              keyExtractor={(item) => item}
+              style={styles.countryList}
+            />
+          </SafeAreaView>
+        </View>
       </Modal>
 
+      {/* Custom Alert */}
       <CustomAlert
         visible={alertVisible}
         title={alertConfig.title}
@@ -393,27 +410,26 @@ const EditProfile = () => {
   );
 };
 
-export default EditProfile;
+export default EditProfileSettings;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
   },
   backButton: {
-    padding: 5,
+    padding: 4,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   content: {
     flex: 1,
@@ -421,11 +437,10 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 30,
   },
   imageWrapper: {
     position: "relative",
-    marginBottom: 12,
   },
   profileImage: {
     width: 100,
@@ -443,35 +458,48 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    padding: 8,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: "#fff", // or background color to create a cut-out effect
+    borderColor: "#fff",
   },
   changePhotoText: {
-    fontSize: 16,
-    fontWeight: "500",
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: "600",
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
+    fontWeight: "600",
     marginBottom: 8,
-    fontWeight: "500",
   },
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
   },
   textArea: {
-    height: 120,
+    minHeight: 100,
     textAlignVertical: "top",
+    paddingTop: 14,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContainer: {
-    flex: 1,
+    height: "80%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   modalHeader: {
     flexDirection: "row",
@@ -482,33 +510,37 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
   },
   searchContainer: {
-    padding: 15,
-    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   searchIcon: {
     position: "absolute",
-    top: 27,
-    left: 25,
+    left: 36,
     zIndex: 1,
   },
   searchInput: {
-    padding: 10,
+    flex: 1,
     paddingLeft: 40,
-    borderRadius: 10,
+    paddingRight: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     fontSize: 16,
   },
-  listContent: {
-    paddingHorizontal: 20,
+  countryList: {
+    flex: 1,
   },
   countryItem: {
-    paddingVertical: 15,
-    borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
   },
   countryText: {
     fontSize: 16,
