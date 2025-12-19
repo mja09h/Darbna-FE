@@ -51,45 +51,35 @@ const getUserProfile = async (id: string): Promise<User> => {
   }
 };
 
-// Update user
-interface UpdateUserData {
+// Update user profile (name, bio, country, profilePicture)
+interface UpdateProfileData {
   name?: string;
   country?: string;
-  username?: string;
-  email?: string;
-  password?: string;
   bio?: string;
   profilePicture?: string | any;
-  coverPicture?: string | any;
-  phone?: string;
 }
 
-const updateUser = async (id: string, data: UpdateUserData) => {
+const updateUser = async (id: string, data: UpdateProfileData) => {
   try {
     const formData = new FormData();
 
-    // ✅ FIXED: Only append fields that have actual values
-    if (data.name) {
-      formData.append("name", data.name);
-    }
-    if (data.country) {
-      formData.append("country", data.country);
-    }
-    if (data.bio) {
-      formData.append("bio", data.bio);
-    }
-    if (data.phone) {
-      formData.append("phone", data.phone);
-    }
+    if (data.name) formData.append("name", data.name);
+    if (data.country) formData.append("country", data.country);
+    if (data.bio) formData.append("bio", data.bio);
 
     // Handle profile picture
     if (data.profilePicture && typeof data.profilePicture === "object") {
-      console.log("data.profilePicture is an object");
       formData.append("profilePicture", {
         uri: data.profilePicture.uri,
         name: data.profilePicture.fileName || "profile.jpg",
         type: "image/jpeg",
       } as any);
+    } else if (typeof data.profilePicture === "string") {
+      // If it's a string (base64 or url), maybe backend expects it differently?
+      // Based on backend code: user.profilePicture = `/uploads/${req.file.filename}`;
+      // So it expects a file upload via multer.
+      // The generic string handling might be legacy or for base64 if supported.
+      // For now, let's keep it if it was working or assume object for new uploads.
     }
 
     const response = await api.put(`/users/${id}`, formData, {
@@ -104,6 +94,33 @@ const updateUser = async (id: string, data: UpdateUserData) => {
   }
 };
 
+const updateEmail = async (id: string, email: string, password?: string) => {
+  try {
+    const response = await api.put(`/users/${id}/email`, { email, password });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const updatePhone = async (id: string, phone: string, password?: string) => {
+  try {
+    const response = await api.put(`/users/${id}/phone`, { phone, password });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const updateUsername = async (id: string, username: string, password?: string) => {
+  try {
+    const response = await api.put(`/users/${id}/username`, { username, password });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Delete user
 const deleteUser = async (id: string): Promise<void> => {
   try {
@@ -113,10 +130,17 @@ const deleteUser = async (id: string): Promise<void> => {
   }
 };
 
+interface UpdatePasswordData {
+  oldPassword?: string;
+  newPassword?: string;
+  password?: string; // Legacy support or direct password
+}
+
 // Update password
-const updatePassword = async (id: string, password: string): Promise<void> => {
+const updatePassword = async (id: string, data: string | UpdatePasswordData): Promise<void> => {
   try {
-    await api.put(`/users/${id}/password`, { password });
+    const payload = typeof data === 'string' ? { password: data } : data;
+    await api.put(`/users/${id}/password`, payload);
   } catch (error) {
     throw error;
   }
@@ -179,6 +203,9 @@ export {
   getUserByUsername,
   getUserProfile,
   updateUser,
+  updateEmail,
+  updatePhone,
+  updateUsername,
   updatePassword,
   deleteUser,
   followUser,

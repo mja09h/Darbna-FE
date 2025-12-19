@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
@@ -20,6 +21,8 @@ import CustomAlert, {
   AlertButton,
 } from "../../../../../components/CustomAlert";
 import { deleteUser } from "../../../../../api/user";
+
+const HEADER_BG_COLOR = "#2c120c";
 
 const AccountScreen = () => {
   const router = useRouter();
@@ -139,88 +142,106 @@ const AccountScreen = () => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
         >
           <Ionicons
-            name={isRTL ? "arrow-forward" : "arrow-back"}
-            size={24}
-            color={colors.text}
+            name={isRTL ? "chevron-forward" : "chevron-back"}
+            size={28}
+            color="#f5e6d3"
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t.profile.accountInfo}
-        </Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>{t.profile.accountInfo}</Text>
+        <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView style={styles.content}>
-        {renderSection(
-          t.profile.personalInfo,
-          <View>
-            {renderItem(
-              "person-outline",
-              t.profile.username,
-              user?.username,
-              () =>
-                router.push("/(protected)/(tabs)/profile/(account)/username")
-            )}
-            {renderItem("mail-outline", t.profile.email, user?.email, () =>
-              router.push("/(protected)/(tabs)/profile/(account)/email")
-            )}
-            {renderItem(
-              "call-outline",
-              t.profile.phone,
-              user?.phone || t.profile.noPhone,
-              () => router.push("/(protected)/(tabs)/profile/(account)/phone")
-            )}
-          </View>
-        )}
+      <View
+        style={[styles.contentWrapper, { backgroundColor: colors.background }]}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {renderSection(
+            t.profile.personalInfo,
+            <View>
+              {renderItem(
+                "person-outline",
+                t.profile.username,
+                user?.username,
+                () =>
+                  router.push("/(protected)/(tabs)/profile/(account)/username")
+              )}
+              {renderItem("mail-outline", t.profile.email, user?.email, () =>
+                router.push("/(protected)/(tabs)/profile/(account)/email")
+              )}
+              {renderItem(
+                "call-outline",
+                t.profile.phone,
+                user?.phone || t.profile.noPhone,
+                () => router.push("/(protected)/(tabs)/profile/(account)/phone")
+              )}
+            </View>
+          )}
 
-        {renderSection(
-          "Security & Connections",
-          <View>
-            {renderItem(
-              "logo-apple",
-              "Apple Account",
-              "Not Connected",
-              () => showAlert("Info", "Apple account linking coming soon"),
-              true
-            )}
-          </View>
-        )}
+          {renderSection(
+            t.profile.securityConnections || "Security & Connections",
+            <View>
+              {renderItem(
+                "lock-closed-outline",
+                t.profile.changePassword,
+                "",
+                () =>
+                  router.push(
+                    "/(protected)/(tabs)/profile/(account)/changePassword"
+                  )
+              )}
+              {renderItem(
+                "logo-apple",
+                t.profile.appleAccount,
+                t.profile.notConnected,
+                () => showAlert("Info", "Apple account linking coming soon"),
+                true
+              )}
+            </View>
+          )}
 
-        {renderSection(
-          "Subscription",
-          <View>
-            {renderItem("card-outline", "My Subscriptions", "Free Plan", () =>
-              router.push("/(protected)/(tabs)/profile/(account)/subscriptions")
-            )}
-          </View>
-        )}
+          {renderSection(
+            "Subscription",
+            <View>
+              {renderItem("card-outline", "My Subscriptions", "Free Plan", () =>
+                router.push(
+                  "/(protected)/(tabs)/profile/(account)/subscriptions"
+                )
+              )}
+            </View>
+          )}
 
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[
-              styles.logoutButton,
-              { backgroundColor: "#FFE5E5", borderColor: "#FF3B30" },
-            ]}
-            onPress={() => {
-              setDeleteConfirmation("");
-              setDeleteModalVisible(true);
-            }}
-          >
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-            <Text style={[styles.logoutText, { color: "#FF3B30" }]}>
-              Delete Account
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[
+                styles.logoutButton,
+                { backgroundColor: "#FFE5E5", borderColor: "#FF3B30" },
+              ]}
+              onPress={() => {
+                setDeleteConfirmation("");
+                setDeleteModalVisible(true);
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+              <Text style={[styles.logoutText, { color: "#FF3B30" }]}>
+                Delete Account
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -325,26 +346,35 @@ export default AccountScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
+    paddingTop: 60,
     paddingBottom: 20,
-    borderBottomWidth: 1,
   },
   backButton: {
     padding: 5,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
+    color: "#f5e6d3",
   },
-  content: {
+  contentWrapper: {
     flex: 1,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: "hidden",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   section: {
     marginBottom: 24,
@@ -361,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 8,
     borderWidth: 1,
   },
@@ -390,7 +420,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     gap: 8,
     borderWidth: 1,
   },

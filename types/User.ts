@@ -10,6 +10,7 @@ export interface User {
     phone?: string;
     followers: string[];
     following: string[];
+    isVerified?: boolean;
     createdAt: string;
     updatedAt: string;
 }

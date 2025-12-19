@@ -18,8 +18,10 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 // import { getCountries } from "../../data/Countries";
 import Toast, { ToastType } from "../../components/Toast";
+import CustomAlert, { AlertButton } from "../../components/CustomAlert";
 import axios from "axios";
 import { useAppleAuth } from "../../hooks/useAppleAuth";
+import { requestVerificationCode } from "../../api/auth";
 
 // --- Components ---
 import AuthInput from "../../components/AuthInput";
@@ -40,7 +42,7 @@ const Register = () => {
   // --- Hooks ---
   const router = useRouter();
   const { t, language } = useLanguage();
-  const { register, appleLogin, isLoading } = useAuth();
+  const { register, appleLogin, isLoading, updateUserState } = useAuth();
 
   // --- Local State ---
   const [name, setName] = useState("");
@@ -52,14 +54,31 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(
-    null
-  );
+  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(null);
 
   // --- Toast State ---
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState<ToastType>("error");
+
+  // --- Alert State ---
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: AlertButton[];
+    type?: "success" | "error" | "warning" | "info";
+  }>({ title: "", message: "" });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "warning" | "info" = "info",
+    buttons?: AlertButton[]
+  ) => {
+    setAlertConfig({ title, message, type, buttons });
+    setAlertVisible(true);
+  };
 
   const showToast = (message: string, type: ToastType = "error") => {
     setToastMessage(message);
@@ -249,13 +268,36 @@ const Register = () => {
     if (!validateForm()) return;
 
     try {
-      await register(
+      const user = await register(
         name.trim(),
         username.trim(),
         email.trim(),
         password,
         phone.trim()
       );
+
+      // New backend flow: registration does not send email automatically
+      // Request a verification code right after successful registration
+      try {
+        await requestVerificationCode(email.trim());
+      } catch (e) {
+        // If sending fails (e.g. mail server issue), still proceed to app
+        // and let the user request again from the Email screen
+        if (__DEV__) console.error("Request verification code failed:", e);
+      }
+
+      // Show verification email alert
+      showAlert(t.auth.checkEmail, t.auth.verificationSent, "success", [
+        {
+          text: "OK",
+          onPress: () => {
+            setAlertVisible(false);
+            // Update user state which triggers the redirect to home via AuthContext
+            updateUserState(user);
+          },
+          style: "default",
+        },
+      ]);
     } catch (error) {
       let errorMessage = t.auth.registerFailed;
 
@@ -340,6 +382,14 @@ const Register = () => {
   // --- Render ---
   return (
     <View style={styles.wrapper}>
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onDismiss={() => setAlertVisible(false)}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
       <Toast
         visible={toastVisible}
         message={toastMessage}

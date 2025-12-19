@@ -76,6 +76,8 @@ export const ar: TranslationKeys = {
     loginFailed: "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.",
     registerFailed: "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.",
     networkError: "خطأ في الشبكة. يرجى التحقق من اتصالك.",
+    checkEmail: "تحقق من بريدك الإلكتروني",
+    verificationSent: "تم إرسال رابط التحقق إلى بريدك الإلكتروني.",
   },
 
   // Common
@@ -165,6 +167,22 @@ export const ar: TranslationKeys = {
     mySubscriptions: "اشتراكاتي",
     freePlan: "الخطة المجانية",
     account: "الحساب",
+    changePassword: "تغيير كلمة المرور",
+    emailNotVerified: "البريد الإلكتروني غير مؤكد",
+    emailVerified: "مؤكد",
+    verifyEmail: "تأكيد البريد الإلكتروني",
+    emailVerificationSent: "تم إرسال بريد التأكيد بنجاح",
+    emailVerificationFailed: "فشل إرسال بريد التأكيد",
+    verify: "تأكيد",
+    sendCode: "إرسال الرمز",
+    resendCode: "إعادة إرسال الرمز",
+    verificationCode: "رمز التحقق",
+    enterVerificationCode: "أدخل الرمز المكون من 6 أرقام",
+    verifyCode: "تأكيد الرمز",
+    codeRequired: "رمز التحقق مطلوب",
+    invalidOrExpiredCode: "رمز التحقق غير صحيح أو منتهي الصلاحية",
+    emailVerifiedSuccess: "تم تأكيد البريد الإلكتروني بنجاح",
+    emailVerifiedSubtitle: "تم تأكيد بريدك الإلكتروني",
   },
 
   // Saved Routes
