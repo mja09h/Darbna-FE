@@ -8,6 +8,7 @@ import { ThemeProvider } from "../context/ThemeContext";
 import { SettingsProvider } from "../context/SettingsContext";
 import { MapProvider } from "../context/MapContext";
 import { RouteRecordingProvider } from "../context/RouteRecordingContext";
+import { SavedRoutesProvider } from "../context/SavedRoutesContext"; // ✅ ADDED
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -44,21 +45,28 @@ const _layout = () => {
           <AuthProvider>
             <MapProvider>
               <RouteRecordingProvider>
-                <Stack initialRouteName="(onBoarding)">
-                  <Stack.Screen
-                    name="(onBoarding)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="(protected)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="(auth)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen name="index" options={{ headerShown: false }} />
-                </Stack>
+                <SavedRoutesProvider>
+                  {/* ✅ ADDED SavedRoutesProvider */}
+                  <Stack initialRouteName="(onBoarding)">
+                    <Stack.Screen
+                      name="(onBoarding)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(protected)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="index"
+                      options={{ headerShown: false }}
+                    />
+                  </Stack>
+                </SavedRoutesProvider>
+                {/* ✅ ADDED closing tag */}
               </RouteRecordingProvider>
             </MapProvider>
           </AuthProvider>

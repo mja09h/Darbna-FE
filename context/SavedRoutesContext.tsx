@@ -14,6 +14,7 @@ export interface IFolder {
   color?: string;
 }
 
+// EXTENDED INTERFACE with all fields needed for the modal
 export interface ISavedRoute {
   _id: string;
   routeId: {
@@ -22,6 +23,33 @@ export interface ISavedRoute {
     distance: number;
     duration: number;
     routeType: string;
+    description?: string;
+    elevationGain?: number;
+    estimatedTime?: string;
+    difficulty?: string;
+    rating?: number;
+    location?: string;
+    terrain?: string;
+    userId?: string;
+    screenshot?: {
+      url: string;
+      uploadedAt: Date;
+    };
+    images?: Array<{
+      url: string;
+      uploadedAt: Date;
+    }>;
+    path?: {
+      type: string;
+      coordinates: [number, number][];
+    };
+    points?: Array<{
+      latitude: number;
+      longitude: number;
+      timestamp: Date;
+      elevation?: number;
+      speed?: number;
+    }>;
   };
   folderId: IFolder;
   difficulty?: string;

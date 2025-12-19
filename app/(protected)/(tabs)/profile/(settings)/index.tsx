@@ -524,6 +524,9 @@ const SettingsScreen = () => {
         {renderSection(
           t.profile.account,
           <View>
+            {renderSettingItem(t.profile.editProfile, "", () =>
+              router.push("/(protected)/(tabs)/profile/(settings)/editProfile")
+            )}
             {renderSettingItem(t.profile.accountInfo, "", () =>
               router.push("/(protected)/(tabs)/profile/(account)")
             )}
