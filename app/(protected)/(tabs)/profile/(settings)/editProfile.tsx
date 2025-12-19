@@ -10,6 +10,7 @@ import {
   FlatList,
   SafeAreaView,
   Image,
+  StatusBar,
 } from "react-native";
 import React, { useState } from "react";
 import { useRouter } from "expo-router";
@@ -24,6 +25,8 @@ import CustomAlert, {
 } from "../../../../../components/CustomAlert";
 import * as ImagePicker from "expo-image-picker";
 
+const HEADER_BG_COLOR = "#2c120c";
+
 const EditProfileSettings = () => {
   // --- Hooks ---
   const router = useRouter();
@@ -37,7 +40,6 @@ const EditProfileSettings = () => {
   // --- Local State ---
   const [name, setName] = useState(user?.name || "");
   const [bio, setBio] = useState(user?.bio || "");
-  const [phone, setPhone] = useState(user?.phone || "");
   const [country, setCountry] = useState(user?.country || "");
   const [profileImage, setProfileImage] = useState(
     user?.profilePicture || null
@@ -104,7 +106,6 @@ const EditProfileSettings = () => {
 
     setLoading(true);
     try {
-      // ✅ FIXED: Only include fields that have values
       const updateData: any = {};
 
       if (name && name !== user.name) {
@@ -113,14 +114,16 @@ const EditProfileSettings = () => {
       if (bio && bio !== user.bio) {
         updateData.bio = bio;
       }
-      if (phone && phone !== user.phone) {
-        updateData.phone = phone;
-      }
       if (country && country !== user.country) {
         updateData.country = country;
       }
       if (base64Image) {
-        updateData.profilePicture = base64Image;
+        // We pass the full asset object or uri, let the api/user.ts handle formatting for FormData
+        updateData.profilePicture = {
+          uri: profileImage, // Use the URI from state
+          fileName: "profile.jpg", // Default name
+          type: "image/jpeg",
+        };
       }
 
       // Only call API if there are changes
@@ -171,173 +174,155 @@ const EditProfileSettings = () => {
 
   // --- Render ---
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
         >
           <Ionicons
-            name={isRTL ? "arrow-forward" : "arrow-back"}
-            size={24}
-            color={colors.text}
+            name={isRTL ? "chevron-forward" : "chevron-back"}
+            size={28}
+            color="#f5e6d3"
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t.profile.editProfile}
-        </Text>
+        <Text style={styles.headerTitle}>{t.profile.editProfile}</Text>
         <TouchableOpacity onPress={handleSave} disabled={loading}>
           {loading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color="#f5e6d3" />
           ) : (
-            <Text
-              style={{ color: colors.primary, fontWeight: "600", fontSize: 16 }}
-            >
+            <Text style={{ color: "#f5e6d3", fontWeight: "600", fontSize: 16 }}>
               {t.common.save}
             </Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Profile Image Picker */}
-        <View style={styles.imageContainer}>
-          <TouchableOpacity onPress={pickImage} style={styles.imageWrapper}>
-            {profileImage ? (
-              <Image
-                source={{ uri: profileImage }}
-                style={styles.profileImage}
-              />
-            ) : (
+      <View
+        style={[styles.contentWrapper, { backgroundColor: colors.background }]}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Profile Image Picker */}
+          <View style={styles.imageContainer}>
+            <TouchableOpacity onPress={pickImage} style={styles.imageWrapper}>
+              {profileImage ? (
+                <Image
+                  source={{ uri: profileImage }}
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.placeholderImage,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Ionicons
+                    name="person"
+                    size={40}
+                    color={colors.textSecondary}
+                  />
+                </View>
+              )}
               <View
                 style={[
-                  styles.placeholderImage,
-                  { backgroundColor: colors.surface },
+                  styles.editIconContainer,
+                  { backgroundColor: colors.primary },
                 ]}
               >
-                <Ionicons
-                  name="person"
-                  size={40}
-                  color={colors.textSecondary}
-                />
+                <Ionicons name="camera" size={16} color="#fff" />
               </View>
-            )}
-            <View
-              style={[
-                styles.editIconContainer,
-                { backgroundColor: colors.primary },
-              ]}
-            >
-              <Ionicons name="camera" size={16} color="#fff" />
-            </View>
-          </TouchableOpacity>
-          <Text style={[styles.changePhotoText, { color: colors.primary }]}>
-            Change Profile Photo
-          </Text>
-        </View>
-
-        {/* Name Input */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t.profile.fullName}
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: colors.text,
-                borderColor: colors.border,
-                textAlign: isRTL ? "right" : "left",
-                backgroundColor: colors.surface,
-              },
-            ]}
-            value={name}
-            onChangeText={setName}
-            placeholder={t.profile.fullName}
-            placeholderTextColor={colors.textSecondary}
-          />
-        </View>
-
-        {/* Country Selection */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t.profile.country}
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.input,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              },
-            ]}
-            onPress={() => setIsCountryModalVisible(true)}
-          >
-            <Text
-              style={{ color: country ? colors.text : colors.textSecondary }}
-            >
-              {country || t.auth.selectCountry}
+            </TouchableOpacity>
+            <Text style={[styles.changePhotoText, { color: colors.primary }]}>
+              Change Profile Photo
             </Text>
-            <Ionicons
-              name="chevron-down"
-              size={20}
-              color={colors.textSecondary}
+          </View>
+
+          {/* Name Input */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t.profile.fullName}
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  borderColor: colors.border,
+                  textAlign: isRTL ? "right" : "left",
+                  backgroundColor: colors.surface,
+                },
+              ]}
+              value={name}
+              onChangeText={setName}
+              placeholder={t.profile.fullName}
+              placeholderTextColor={colors.textSecondary}
             />
-          </TouchableOpacity>
-        </View>
+          </View>
 
-        {/* Phone Input */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t.profile.phone}
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: colors.text,
-                borderColor: colors.border,
-                textAlign: isRTL ? "right" : "left",
-                backgroundColor: colors.surface,
-              },
-            ]}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder={t.profile.phone}
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="phone-pad"
-          />
-        </View>
+          {/* Country Selection */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t.profile.country}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.input,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                },
+              ]}
+              onPress={() => setIsCountryModalVisible(true)}
+            >
+              <Text
+                style={{ color: country ? colors.text : colors.textSecondary }}
+              >
+                {country || t.auth.selectCountry}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
 
-        {/* Bio Input */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            {t.profile.bio}
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              styles.textArea,
-              {
-                color: colors.text,
-                borderColor: colors.border,
-                textAlign: isRTL ? "right" : "left",
-                backgroundColor: colors.surface,
-              },
-            ]}
-            value={bio}
-            onChangeText={setBio}
-            placeholder={t.profile.bio}
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            numberOfLines={4}
-          />
-        </View>
-      </ScrollView>
+          {/* Bio Input */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t.profile.bio}
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  color: colors.text,
+                  borderColor: colors.border,
+                  textAlign: isRTL ? "right" : "left",
+                  backgroundColor: colors.surface,
+                },
+              ]}
+              value={bio}
+              onChangeText={setBio}
+              placeholder={t.profile.bio}
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+        </ScrollView>
+      </View>
 
       {/* Country Selection Modal */}
       <Modal
@@ -421,23 +406,34 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#f5e6d3",
   },
-  content: {
+  contentWrapper: {
     flex: 1,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: "hidden",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   imageContainer: {
     alignItems: "center",
     marginBottom: 30,
+    marginTop: 10,
   },
   imageWrapper: {
     position: "relative",
@@ -446,6 +442,8 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+    borderWidth: 3,
+    borderColor: "#ad5410",
   },
   placeholderImage: {
     width: 100,
@@ -453,6 +451,8 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#ad5410",
   },
   editIconContainer: {
     position: "absolute",

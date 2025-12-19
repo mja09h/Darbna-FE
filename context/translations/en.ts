@@ -73,6 +73,8 @@ export const en = {
     loginFailed: "Login failed. Please try again.",
     registerFailed: "Registration failed. Please try again.",
     networkError: "Network error. Please check your connection.",
+    checkEmail: "Check your email",
+    verificationSent: "A verification link has been sent to your email address.",
   },
 
   // Common
@@ -164,6 +166,22 @@ export const en = {
     mySubscriptions: "My Subscriptions",
     freePlan: "Free Plan",
     account: "Account",
+    changePassword: "Change Password",
+    emailNotVerified: "Email not verified",
+    emailVerified: "Verified",
+    verifyEmail: "Verify Email",
+    emailVerificationSent: "Verification email sent successfully",
+    emailVerificationFailed: "Failed to send verification email",
+    verify: "Verify",
+    sendCode: "Send code",
+    resendCode: "Resend code",
+    verificationCode: "Verification code",
+    enterVerificationCode: "Enter the 6-digit code",
+    verifyCode: "Verify code",
+    codeRequired: "Verification code is required",
+    invalidOrExpiredCode: "Invalid or expired verification code",
+    emailVerifiedSuccess: "Email verified successfully",
+    emailVerifiedSubtitle: "Your email is verified",
   },
 
   // Saved Routes

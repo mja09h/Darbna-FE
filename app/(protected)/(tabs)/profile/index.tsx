@@ -68,6 +68,14 @@ const ProfileScreen = () => {
             <Text style={styles.usernameText}>
               @{user?.username || "guest"}
             </Text>
+            {user?.isVerified === false && (
+              <View style={styles.verificationBadge}>
+                <Ionicons name="alert-circle" size={16} color="#FF3B30" />
+                <Text style={styles.verificationText}>
+                  {t.profile.emailNotVerified}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -253,6 +261,23 @@ const styles = StyleSheet.create({
   usernameText: {
     fontSize: 16,
     color: "#a89080",
+  },
+  verificationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 59, 48, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255, 59, 48, 0.3)",
+  },
+  verificationText: {
+    color: "#FF3B30",
+    fontSize: 12,
+    fontWeight: "600",
   },
   statsContainer: {
     flexDirection: "row",

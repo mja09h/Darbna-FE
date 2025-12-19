@@ -154,6 +154,68 @@ const resetPassword = async (
   }
 };
 
-export { login, register, logout, forgotPassword, resetPassword, appleAuth };
+const requestVerificationCode = async (
+  email: string
+): Promise<{ message: string }> => {
+  try {
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    try {
+      const response = await api.post("/users/request-verification", {
+        email: normalizedEmail,
+      });
+      return response.data;
+    } catch (error: any) {
+      // Optional fallback if backend uses a slightly different route name
+      if (error?.response?.status === 404) {
+        const fallbackResponse = await api.post(
+          "/users/request-verification-code",
+          { email: normalizedEmail }
+        );
+        return fallbackResponse.data;
+      }
+      throw error;
+    }
+  } catch (error) {
+    throw error;
+  }
+};
+
+const verifyEmailCode = async (
+  email: string,
+  code: string
+): Promise<{ message: string }> => {
+  try {
+    if (!email || !code) {
+      throw new Error("Email and code are required");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedCode = code.trim();
+
+    const response = await api.post("/users/verify-email", {
+      email: normalizedEmail,
+      code: normalizedCode,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export {
+  login,
+  register,
+  logout,
+  forgotPassword,
+  resetPassword,
+  appleAuth,
+  requestVerificationCode,
+  verifyEmailCode,
+};
 
 export type { AppleAuthData };

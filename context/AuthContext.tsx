@@ -39,6 +39,7 @@ const MOCK_USER: User = {
   phone: undefined,
   followers: [],
   following: [],
+  isVerified: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -54,7 +55,7 @@ interface AuthContextType {
     email: string,
     password: string,
     phone: string
-  ) => Promise<void>;
+  ) => Promise<User>;
   logout: () => Promise<void>;
   updateUserState: (user: User) => void;
   appleLogin: (data: AppleAuthData) => Promise<void>;
@@ -202,7 +203,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         password,
         phone
       );
-      setUser(response.user);
+      // We don't set user here to allow the register component to show the verification modal
+      // setUser(response.user);
 
       // Register and save push notification token
       const token = await registerForPushNotificationsAsync();
@@ -210,7 +212,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         await savePushToken(token);
       }
 
-      router.replace("/(protected)/(tabs)/home");
+      // router.replace("/(protected)/(tabs)/home");
+      return response.user;
     } catch (error) {
       throw error;
     } finally {

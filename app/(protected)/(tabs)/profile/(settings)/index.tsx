@@ -6,6 +6,7 @@ import {
   ScrollView,
   Alert,
   AppState,
+  StatusBar,
 } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -21,6 +22,8 @@ import { Ionicons } from "@expo/vector-icons";
 import CustomAlert, {
   AlertButton,
 } from "../../../../../components/CustomAlert";
+
+const HEADER_BG_COLOR = "#2c120c";
 
 const SettingsScreen = () => {
   // --- Hooks ---
@@ -498,105 +501,110 @@ const SettingsScreen = () => {
 
   // --- Render ---
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
         >
           <Ionicons
-            name={isRTL ? "arrow-forward" : "arrow-back"}
-            size={24}
-            color={colors.text}
+            name={isRTL ? "chevron-forward" : "chevron-back"}
+            size={28}
+            color="#f5e6d3"
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {t.settings.title}
-        </Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>{t.settings.title}</Text>
+        <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {renderSection(
-          t.profile.account,
-          <View>
-            {renderSettingItem(t.profile.editProfile, "", () =>
-              router.push("/(protected)/(tabs)/profile/(settings)/editProfile")
-            )}
-            {renderSettingItem(t.profile.accountInfo, "", () =>
-              router.push("/(protected)/(tabs)/profile/(account)")
-            )}
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: colors.card }]}
-              onPress={handleLogout}
-            >
-              <Text style={[styles.settingLabel, { color: "#FF3B30" }]}>
-                {t.profile.logout}
-              </Text>
-              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-            </TouchableOpacity>
-          </View>
-        )}
+      <View style={[styles.content, { backgroundColor: colors.background }]}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderSection(
+            t.profile.account,
+            <View>
+              {renderSettingItem(t.profile.editProfile, "", () =>
+                router.push(
+                  "/(protected)/(tabs)/profile/(settings)/editProfile"
+                )
+              )}
+              {renderSettingItem(t.profile.accountInfo, "", () =>
+                router.push("/(protected)/(tabs)/profile/(account)")
+              )}
+              <TouchableOpacity
+                style={[styles.settingItem, { backgroundColor: colors.card }]}
+                onPress={handleLogout}
+              >
+                <Text style={[styles.settingLabel, { color: "#FF3B30" }]}>
+                  {t.profile.logout}
+                </Text>
+                <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {renderSection(t.settings.language, renderLanguageSelector())}
+          {renderSection(t.settings.language, renderLanguageSelector())}
 
-        {renderSection(t.settings.units, renderUnitsSelector())}
+          {renderSection(t.settings.units, renderUnitsSelector())}
 
-        {renderSection(t.settings.appearance, renderThemeSelector())}
+          {renderSection(t.settings.appearance, renderThemeSelector())}
 
-        {renderSection(
-          t.settings.permissions,
-          <View>
-            {renderPermissionItem(
-              t.settings.location,
-              t.settings.locationDescription,
-              locationStatus,
-              requestLocationPermission,
-              openAppSettings
-            )}
-
-            <View style={{ marginTop: 12 }}>
+          {renderSection(
+            t.settings.permissions,
+            <View>
               {renderPermissionItem(
-                t.settings.notifications,
-                t.settings.notificationDescription,
-                notificationStatus,
-                requestNotificationPermission,
+                t.settings.location,
+                t.settings.locationDescription,
+                locationStatus,
+                requestLocationPermission,
                 openAppSettings
               )}
+
+              <View style={{ marginTop: 12 }}>
+                {renderPermissionItem(
+                  t.settings.notifications,
+                  t.settings.notificationDescription,
+                  notificationStatus,
+                  requestNotificationPermission,
+                  openAppSettings
+                )}
+              </View>
             </View>
+          )}
+
+          {renderSection(
+            t.settings.legal,
+            <View>
+              {renderSettingItem(t.settings.about, "", () =>
+                router.push("/(protected)/(tabs)/profile/(settings)/about")
+              )}
+              {renderSettingItem(t.settings.termsOfService, "", () =>
+                router.push("/(protected)/(tabs)/profile/(settings)/terms")
+              )}
+              {renderSettingItem(
+                t.settings.privacyPolicy,
+                "",
+                () =>
+                  router.push("/(protected)/(tabs)/profile/(settings)/privacy"),
+                true
+              )}
+            </View>,
+            true
+          )}
+
+          <View style={styles.versionContainer}>
+            <Text style={[styles.versionText, { color: colors.textSecondary }]}>
+              v{version}
+            </Text>
           </View>
-        )}
-
-        {renderSection(
-          t.settings.legal,
-          <View>
-            {renderSettingItem(t.settings.about, "", () =>
-              router.push("/(protected)/(tabs)/profile/(settings)/about")
-            )}
-            {renderSettingItem(t.settings.termsOfService, "", () =>
-              router.push("/(protected)/(tabs)/profile/(settings)/terms")
-            )}
-            {renderSettingItem(
-              t.settings.privacyPolicy,
-              "",
-              () =>
-                router.push("/(protected)/(tabs)/profile/(settings)/privacy"),
-              true
-            )}
-          </View>,
-          true
-        )}
-
-        <View style={styles.versionContainer}>
-          <Text style={[styles.versionText, { color: colors.textSecondary }]}>
-            v{version}
-          </Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       <CustomAlert
         visible={alertVisible}
@@ -615,22 +623,28 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
+    paddingTop: 60,
     paddingBottom: 20,
-    borderBottomWidth: 1,
   },
   backButton: {
     padding: 5,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
+    color: "#f5e6d3",
+  },
+  content: {
+    flex: 1,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: "hidden",
   },
   scrollView: {
     flex: 1,
@@ -638,9 +652,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
+    gap: 20,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 0, // Handled by gap
   },
   sectionTitle: {
     fontSize: 14,
@@ -648,6 +663,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginLeft: 4,
   },
   divider: {
     height: 1,
@@ -659,7 +675,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 8,
   },
   settingLabel: {
@@ -695,7 +711,7 @@ const styles = StyleSheet.create({
   },
   permissionItem: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
@@ -761,7 +777,7 @@ const styles = StyleSheet.create({
   },
   versionContainer: {
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 10,
     marginBottom: 20,
   },
   versionText: {

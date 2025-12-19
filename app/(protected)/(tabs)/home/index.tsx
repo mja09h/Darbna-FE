@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   TextInput,
   Modal,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -19,18 +20,7 @@ import InteractiveMap from "../../../../components/InteractiveMap";
 import SOSModal from "../../../../components/SOSModal";
 import SOSHeaderButton from "../../../../components/SOSHeaderButton";
 import SaveRouteModal from "../../../../components/SaveRouteModal";
-
-// Darbna Brand Colors
-const COLORS = {
-  desertOrange: "#C46F26",
-  darkSandBrown: "#3A1D1A",
-  palmBrown: "#7D482",
-  sandBeige: "#E9DCCF",
-  offWhiteDesert: "#F4EEE7",
-  white: "#FFFFFF",
-  text: "#333333",
-  lightText: "#666666",
-};
+import COLORS from "../../../../data/colors";
 
 const HomePage = () => {
   const router = useRouter();
@@ -320,7 +310,11 @@ const HomePage = () => {
             />
           </View>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Map</Text>
+            <Image
+              source={require("../../../../assets/darbna-iconV3-2.png")}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity
@@ -332,10 +326,11 @@ const HomePage = () => {
               onPress={
                 currentRoute ? handleStopRecording : handleStartRecording
               }
+              activeOpacity={0.7}
             >
               <Ionicons
-                name={currentRoute ? "stop-circle" : "play-circle"}
-                size={28}
+                name={currentRoute ? "square" : "play"}
+                size={24}
                 color={
                   currentRoute && !isRecording
                     ? COLORS.lightText
@@ -343,6 +338,7 @@ const HomePage = () => {
                     ? COLORS.white
                     : COLORS.desertOrange
                 }
+                style={!currentRoute ? { marginLeft: 4 } : {}}
               />
             </TouchableOpacity>
           </View>
@@ -464,7 +460,7 @@ const HomePage = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    paddingTop: 30,
+    paddingTop: 25,
     backgroundColor: COLORS.darkSandBrown,
   },
   container: {
@@ -477,7 +473,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    // paddingVertical: 14,
     backgroundColor: COLORS.darkSandBrown,
     borderBottomWidth: 0,
     elevation: 3,
@@ -502,26 +498,37 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "center",
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: COLORS.white,
-    letterSpacing: 0.5,
-    textAlign: "center",
+  headerLogo: {
+    width: 150,
+    height: 100,
   },
   recordButton: {
-    padding: 10,
+    width: 48,
+    height: 48,
     borderRadius: 24,
     backgroundColor: COLORS.offWhiteDesert,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
   },
   recordButtonActive: {
     backgroundColor: COLORS.desertOrange,
+    borderColor: COLORS.white,
+    shadowColor: COLORS.desertOrange,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
   },
   recordButtonDisabled: {
     backgroundColor: COLORS.sandBeige,
-    opacity: 0.6,
+    opacity: 0.8,
+    borderColor: "transparent",
+    elevation: 0,
   },
   statusBar: {
     position: "absolute",
