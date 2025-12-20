@@ -116,7 +116,6 @@ const ProfileScreen = () => {
               </Text>
             </View>
           ) : null}
-
           {/* Details */}
           <View style={[styles.section, { backgroundColor: colors.surface }]}>
             <View style={styles.detailRow}>
@@ -165,9 +164,11 @@ const ProfileScreen = () => {
               </Text>
             </View>
           </View>
-
+          {/* // Saved Routes Link */}
+          {/* // saved route in the profile page */}
           {/* Saved Routes Link */}
-          <TouchableOpacity
+          {/* saved route in the profile page */}
+          {/* <TouchableOpacity
             style={[
               styles.settingsButton,
               { backgroundColor: colors.surface, marginBottom: 12 },
@@ -196,7 +197,9 @@ const ProfileScreen = () => {
               size={22}
               color={colors.textSecondary}
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
+          {/* saved route in the profile page */}
+          {/* // saved route in the profile page */}
         </ScrollView>
       </View>
     </View>

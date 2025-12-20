@@ -31,6 +31,7 @@ const COLORS = {
 interface SOSModalProps {
   visible: boolean;
   onClose: () => void;
+  userLocation: Location.LocationObject | null;
 }
 
 interface AlertState {
@@ -41,7 +42,7 @@ interface AlertState {
   type: "success" | "error" | "warning" | "info";
 }
 
-const SOSModal = ({ visible, onClose }: SOSModalProps) => {
+const SOSModal = ({ visible, onClose, userLocation }: SOSModalProps) => {
   const [activeTab, setActiveTab] = useState("send");
   const [isSending, setIsSending] = useState(false);
   const [sosExpiry, setSosExpiry] = useState<number | null>(null);
@@ -116,57 +117,62 @@ const SOSModal = ({ visible, onClose }: SOSModalProps) => {
     }
   };
 
-  const handleSendSOS = async () => {
-    setIsSending(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") throw new Error("Permission denied");
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const alert = await createSOSAlert({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      });
-
-      // Set 2-hour timer
-      const expiry = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
-      setSosExpiry(expiry);
-      setActiveSosAlertId(alert._id);
-      await AsyncStorage.setItem("sosExpiry", String(expiry));
-      await AsyncStorage.setItem("activeSosAlertId", alert._id);
-
-      showAlert(
-        "SOS Sent",
-        "Your alert has been broadcast.",
-        undefined,
-        "success"
-      );
-    } catch (error: any) {
-      if (error.response?.status === 429) {
-        showAlert(
-          "Rate Limit",
-          error.response.data.message,
-          undefined,
-          "warning"
-        );
-        // Set cooldown timer if rate limited
-        const timeLeftMatch =
-          error.response.data.message.match(/(\d+)\s+minute/);
-        if (timeLeftMatch) {
-          const minutesLeft = parseInt(timeLeftMatch[1]);
-          const expiry = Date.now() + minutesLeft * 60 * 1000;
-          setCooldownExpiry(expiry);
-          await AsyncStorage.setItem("cooldownExpiry", String(expiry));
+    const handleSendSOS = async () => {
+      setIsSending(true);
+      try {
+        // Check if location is available from props
+        if (!userLocation) {
+          throw new Error(
+            "Location not available. Please wait a moment and try again."
+          );
         }
-      } else {
-        showAlert("Error", "Could not send SOS alert.", undefined, "error");
-      }
-    } finally {
-      setIsSending(false);
-    }
-  };
 
+        const alert = await createSOSAlert({
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+        });
+
+        // Set 2-hour timer
+        const expiry = Date.now() + 2 * 60 * 60 * 1000; // 2 hours
+        setSosExpiry(expiry);
+        setActiveSosAlertId(alert._id);
+        await AsyncStorage.setItem("sosExpiry", String(expiry));
+        await AsyncStorage.setItem("activeSosAlertId", alert._id);
+
+        showAlert(
+          "SOS Sent",
+          "Your alert has been broadcast.",
+          undefined,
+          "success"
+        );
+      } catch (error: any) {
+        if (error.response?.status === 429) {
+          showAlert(
+            "Rate Limit",
+            error.response.data.message,
+            undefined,
+            "warning"
+          );
+          const timeLeftMatch =
+            error.response.data.message.match(/(\d+)\s+minute/);
+          if (timeLeftMatch) {
+            const minutesLeft = parseInt(timeLeftMatch[1]);
+            const expiry = Date.now() + minutesLeft * 60 * 1000;
+            setCooldownExpiry(expiry);
+            await AsyncStorage.setItem("cooldownExpiry", String(expiry));
+          }
+        } else {
+          showAlert(
+            "Error",
+            error.message || "Could not send SOS alert.",
+            undefined,
+            "error"
+          );
+        }
+      } finally {
+        setIsSending(false);
+      }
+    };
   const handleCancelSOS = async () => {
     if (!activeSosAlertId) {
       showAlert("Error", "No active SOS to cancel", undefined, "error");

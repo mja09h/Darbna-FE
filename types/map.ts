@@ -1,4 +1,3 @@
-// Represents a single point location
 export interface ILocation {
   _id: string;
   userId: string;
@@ -69,7 +68,7 @@ export interface IMapState {
   locations: ILocation[];
   routes: IRoute[];
   pois: IPOI[];
-  heatmapData: { lng: number; lat: number; weight: number }[];
+  // heatmapData has been removed
   pinnedPlaces: IPinnedPlace[];
 }
 
@@ -82,6 +81,9 @@ export interface IMapContext extends IMapState {
     latitude: number;
   }) => void;
   createPin: (pinData: CreatePinData) => Promise<IPinnedPlace>;
-  updatePin: (pinId: string, pinData: Partial<CreatePinData>) => Promise<IPinnedPlace>;
+  updatePin: (
+    pinId: string,
+    pinData: Partial<CreatePinData>
+  ) => Promise<IPinnedPlace>;
   deletePin: (pinId: string) => Promise<void>;
 }

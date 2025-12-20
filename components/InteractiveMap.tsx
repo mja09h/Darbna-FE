@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import MapView, {
   Marker,
   Polyline,
-  Heatmap,
   UrlTile,
   PROVIDER_DEFAULT,
 } from "react-native-maps";
@@ -34,13 +33,11 @@ const InteractiveMap = ({
   userLocation,
   currentRoute,
 }: InteractiveMapProps) => {
-  const { locations, routes, pois, heatmapData, pinnedPlaces, createPin } =
-    useMap();
+  const { locations, routes, pois, pinnedPlaces, createPin } = useMap();
   const { user } = useAuth();
   const router = useRouter();
   const [showRoutes, setShowRoutes] = useState(true);
   const [showPois, setShowPois] = useState(true);
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{
     latitude: number;
@@ -52,7 +49,6 @@ const InteractiveMap = ({
     null
   );
 
-  // Handle pin marker press - navigate to detail page
   const handlePinPress = (pin: IPinnedPlace) => {
     router.push({
       pathname: "/(protected)/(tabs)/home/pin-detail",
@@ -60,31 +56,25 @@ const InteractiveMap = ({
     });
   };
 
-  // Wrapper function to add userId to pin data from AuthContext
   const handleCreatePin = async (pinData: CreatePinData) => {
     if (!user?._id) {
       Alert.alert("Error", "Please log in to create pins");
       return;
     }
-    // Add userId to pin data from AuthContext
     await createPin({ ...pinData, userId: user._id });
   };
 
-  // OpenStreetMap tile server URL via backend proxy
   const osmTileUrl = `${BASE_URL}/map/tiles/{z}/{x}/{y}.png`;
 
-  // Track device heading/compass direction
   useEffect(() => {
     const startHeadingTracking = async () => {
       try {
-        // Check if heading is available
         const hasHeading = await Location.hasServicesEnabledAsync();
         if (!hasHeading) {
           console.warn("Heading services not available");
           return;
         }
 
-        // Watch heading updates
         headingSubscriptionRef.current = await Location.watchHeadingAsync(
           (headingData) => {
             if (headingData.trueHeading !== -1) {
@@ -96,7 +86,6 @@ const InteractiveMap = ({
         );
       } catch (error) {
         console.error("Error starting heading tracking:", error);
-        // Try to get heading from location updates as fallback
         if (
           userLocation?.coords.heading !== undefined &&
           userLocation.coords.heading !== null
@@ -115,7 +104,6 @@ const InteractiveMap = ({
     };
   }, []);
 
-  // Also check userLocation for heading as fallback
   useEffect(() => {
     if (
       userLocation?.coords.heading !== undefined &&
@@ -126,7 +114,6 @@ const InteractiveMap = ({
     }
   }, [userLocation?.coords.heading]);
 
-  // Center map on user location when first obtained
   useEffect(() => {
     if (userLocation && mapRef.current) {
       mapRef.current.animateToRegion(
@@ -141,7 +128,6 @@ const InteractiveMap = ({
     }
   }, [userLocation?.coords.latitude, userLocation?.coords.longitude]);
 
-  // Function to center map on user location
   const centerOnUserLocation = () => {
     if (userLocation && mapRef.current) {
       mapRef.current.animateToRegion(
@@ -156,14 +142,12 @@ const InteractiveMap = ({
     }
   };
 
-  // Convert heading degrees to cardinal direction
   const getCardinalDirection = (heading: number): string => {
     const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
     const index = Math.round(heading / 45) % 8;
     return directions[index];
   };
 
-  // Determine initial region based on user location or default
   const getInitialRegion = () => {
     if (userLocation) {
       return {
@@ -198,7 +182,6 @@ const InteractiveMap = ({
       >
         <UrlTile urlTemplate={osmTileUrl} />
 
-        {/* Display user's current location */}
         {userLocation && (
           <Marker
             coordinate={{
@@ -211,7 +194,6 @@ const InteractiveMap = ({
           />
         )}
 
-        {/* Display other users' locations */}
         {locations.map((loc) => (
           <Marker
             key={loc._id}
@@ -223,7 +205,6 @@ const InteractiveMap = ({
           />
         ))}
 
-        {/* Display currently recording route in real-time */}
         {currentRoute && currentRoute.points.length >= 2 && (
           <Polyline
             coordinates={currentRoute.points.map((point) => ({
@@ -237,7 +218,6 @@ const InteractiveMap = ({
           />
         )}
 
-        {/* Display saved routes/paths */}
         {routes.map((route) => (
           <Polyline
             key={route._id}
@@ -250,7 +230,6 @@ const InteractiveMap = ({
           />
         ))}
 
-        {/* Display Points of Interest */}
         {showPois &&
           pois.map((poi) => (
             <Marker
@@ -265,10 +244,7 @@ const InteractiveMap = ({
             />
           ))}
 
-        {/* Display Pinned Places */}
         {pinnedPlaces.map((pin) => {
-          // Filter: show if public OR if it's the user's own pin
-          // Handle case where userId might be null/undefined (e.g. deleted user)
           const isOwner =
             user &&
             pin.userId &&
@@ -293,22 +269,8 @@ const InteractiveMap = ({
             />
           );
         })}
-
-        {/* Display Heatmap Layer */}
-        {/* {showHeatmap && heatmapData.length > 0 && (
-          <Heatmap
-            points={heatmapData.map((p) => ({
-              latitude: p.lat,
-              longitude: p.lng,
-              weight: p.weight,
-            }))}
-            opacity={0.7}
-            radius={50}
-          />
-        ))} */}
       </MapView>
 
-      {/* Digital Compass */}
       {heading !== null && (
         <View style={styles.compassContainer}>
           <Text style={styles.compassText}>
@@ -318,7 +280,6 @@ const InteractiveMap = ({
         </View>
       )}
 
-      {/* My Location Button */}
       {userLocation && (
         <TouchableOpacity
           style={styles.myLocationButton}
@@ -328,7 +289,6 @@ const InteractiveMap = ({
         </TouchableOpacity>
       )}
 
-      {/* Pin Creation Modal */}
       <PinCreationModal
         visible={showPinModal}
         location={selectedLocation}

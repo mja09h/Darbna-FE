@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -20,11 +20,11 @@ const ROUTE_TYPES = ["Running", "Cycling", "Walking", "Hiking", "Other"];
 
 interface SaveRouteModalProps {
   visible: boolean;
-  routeName: string;
   distance: number;
   duration: number;
   screenshotUri?: string;
   onSave: (
+    name: string,
     description: string,
     isPublic: boolean,
     routeType: string
@@ -34,7 +34,6 @@ interface SaveRouteModalProps {
 
 const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
   visible,
-  routeName,
   distance,
   duration,
   screenshotUri,
@@ -45,10 +44,20 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
   const { colors } = useTheme();
   const { units } = useSettings();
 
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [routeType, setRouteType] = useState("Running");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setName("");
+      setDescription("");
+      setIsPublic(false);
+      setRouteType("Running");
+    }
+  }, [visible]);
 
   const formatDistance = (km: number) => {
     if (units === "miles") {
@@ -75,7 +84,11 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
   };
 
   const handleSave = async () => {
-    // Validation
+    if (!name.trim()) {
+      Alert.alert(t.common.error, "Route name is required");
+      return;
+    }
+
     if (!description.trim()) {
       Alert.alert(
         t.common.error,
@@ -96,12 +109,9 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
 
     setIsLoading(true);
     try {
-      await onSave(description.trim(), isPublic, routeType);
-      setDescription("");
-      setIsPublic(false);
-      setRouteType("Running");
+      await onSave(name.trim(), description.trim(), isPublic, routeType);
     } catch (error) {
-      Alert.alert(t.common.error, "Failed to save route. Please try again.");
+      // Error is already handled in HomePage, no need to show another alert
     } finally {
       setIsLoading(false);
     }
@@ -188,18 +198,27 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
               </View>
             </View>
 
-            {/* Route Name Display */}
+            {/* Route Name Input */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t.savedRoutes.routeName}
+                {t.savedRoutes.routeName} *
               </Text>
-              <Text
+              <TextInput
                 style={[
-                  styles.routeName,
-                  { color: colors.text, backgroundColor: colors.surface },
+                  styles.nameInput,
+                  { backgroundColor: colors.surface, color: colors.text },
                 ]}
+                placeholder="Enter route name"
+                value={name}
+                onChangeText={setName}
+                maxLength={50}
+                placeholderTextColor={colors.textSecondary}
+                editable={!isLoading}
+              />
+              <Text
+                style={[styles.characterCount, { color: colors.textSecondary }]}
               >
-                {routeName}
+                {name.length}/50
               </Text>
             </View>
 
@@ -367,9 +386,11 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
                   styles.button,
                   styles.saveButton,
                   { backgroundColor: colors.primary },
+                  (!name.trim() || !description.trim()) &&
+                    styles.buttonDisabled,
                 ]}
                 onPress={handleSave}
-                disabled={isLoading}
+                disabled={isLoading || !name.trim() || !description.trim()}
               >
                 {isLoading ? (
                   <ActivityIndicator color={colors.background} />
@@ -463,11 +484,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  routeName: {
-    fontSize: 16,
-    fontWeight: "600",
-    padding: 12,
+  nameInput: {
     borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   descriptionInput: {
     borderRadius: 8,
@@ -475,6 +497,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlignVertical: "top",
     minHeight: 100,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   typeGrid: {
     flexDirection: "row",
@@ -542,6 +566,9 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
 });
 
