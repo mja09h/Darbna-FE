@@ -54,24 +54,21 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     return Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
   }, []);
 
-  const startRecording = useCallback(
-    (routeName: string, description?: string) => {
-      const now = new Date();
-      setState((prevState) => ({
-        ...prevState,
-        isRecording: true,
-        currentRoute: {
-          name: routeName,
-          description: description || "",
-          points: [],
-          startTime: now,
-          distance: 0,
-          duration: 0,
-        },
-      }));
-    },
-    []
-  );
+  const startRecording = useCallback(() => {
+    const now = new Date();
+    setState((prevState) => ({
+      ...prevState,
+      isRecording: true,
+      currentRoute: {
+        name: "",
+        description: "",
+        points: [],
+        startTime: now,
+        distance: 0,
+        duration: 0,
+      },
+    }));
+  }, []);
 
   const addPoint = useCallback(
     (point: IGPSPoint) => {
@@ -131,7 +128,11 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
       screenshotUri?: string
     ): Promise<IRecordedRoute> => {
       try {
-        // Validation: Check if route has at least 10 points
+        if (!routeName || !routeName.trim()) {
+          Alert.alert("Error", "Route name is required");
+          throw new Error("Route name is required.");
+        }
+
         if (!state.currentRoute || state.currentRoute.points.length < 10) {
           Alert.alert(
             "Route Too Short",
@@ -142,7 +143,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
           throw new Error("Route must have at least 10 points.");
         }
 
-        // Validation: Check if route duration is at least 1 minute (60 seconds)
         if (state.currentRoute.duration < 60) {
           const minutes = Math.floor(state.currentRoute.duration / 60);
           const seconds = state.currentRoute.duration % 60;
@@ -176,7 +176,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
 
         const savedRoute = await createRoute(routeData as any);
 
-        // Upload screenshot if provided
         if (screenshotUri) {
           try {
             const formData = new FormData();
@@ -192,7 +191,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
               name: filename,
             } as any);
 
-            await api.post<any>( 
+            await api.post<any>(
               `/routes/${savedRoute._id}/screenshot`,
               formData,
               {
@@ -202,7 +201,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
               }
             );
           } catch (error) {
-            // Continue even if screenshot upload fails
             if (__DEV__) {
               console.warn("Error uploading screenshot:", error);
             }
@@ -212,24 +210,22 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         setState((prevState) => ({
           ...prevState,
           recordedRoutes: [...prevState.recordedRoutes, savedRoute],
-          currentRoute: null,
+          currentRoute: null, // Correctly clear currentRoute after saving
           isRecording: false,
         }));
 
         return savedRoute;
       } catch (error: any) {
-        // Only log non-network errors to avoid console spam when backend is offline
         if (__DEV__) {
           if (
             error?.code === "ERR_NETWORK" ||
             error?.message?.includes("Network Error")
           ) {
-            // Network error - backend not available, silently fail
           } else if (
             !error?.message?.includes("Route must have") &&
-            !error?.message?.includes("at least")
+            !error?.message?.includes("at least") &&
+            !error?.message?.includes("Route name is required")
           ) {
-            // Other errors should be logged
             console.warn("Error saving route:", error?.message || error);
           }
         }
@@ -243,7 +239,15 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     setState((prevState) => ({
       ...prevState,
       isRecording: false,
-      currentRoute: null,
+      // currentRoute is NOT cleared here - it's cleared in discardRecording or saveRoute
+    }));
+  }, []);
+
+  const discardRecording = useCallback(async () => {
+    setState((prevState) => ({
+      ...prevState,
+      isRecording: false,
+      currentRoute: null, // Correctly clear currentRoute on discard
     }));
   }, []);
 
@@ -316,6 +320,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         selectRoute,
         calculateDistance,
         calculateDuration,
+        discardRecording,
       }}
     >
       {children}

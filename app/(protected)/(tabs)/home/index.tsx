@@ -6,8 +6,6 @@ import {
   Text,
   Alert,
   SafeAreaView,
-  TextInput,
-  Modal,
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,19 +31,16 @@ const HomePage = () => {
     resumeRecording,
     addPoint,
     saveRoute,
+    discardRecording, // Import discardRecording
   } = useRouteRecording();
   const { units } = useSettings();
 
   const navigation = useNavigation();
-  const [routeName, setRouteName] = useState("");
-  const [routeDescription, setRouteDescription] = useState("");
   const [screenshotUri, setScreenshotUri] = useState<string | undefined>(
     undefined
   );
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSOSModalVisible, setSOSModalVisible] = useState(false);
-  const [showRouteNameModal, setShowRouteNameModal] = useState(false);
-  const [tempRouteName, setTempRouteName] = useState("");
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
@@ -152,27 +147,35 @@ const HomePage = () => {
   }, [isRecording, currentRoute?.startTime]);
 
   const handleStartRecording = () => {
-    setTempRouteName("");
-    setShowRouteNameModal(true);
-  };
-
-  const handleConfirmRouteName = () => {
-    if (tempRouteName && tempRouteName.trim()) {
-      startRecording(tempRouteName.trim());
-      setRouteName(tempRouteName.trim());
-      setRecordingTime(0);
-      setShowRouteNameModal(false);
-      setTempRouteName("");
-    }
+    Alert.alert(
+      "Start Recording",
+      "Do you want to start recording your route?",
+      [
+        {
+          text: "No",
+          onPress: () => {
+            // Do nothing
+          },
+          style: "cancel",
+        },
+        {
+          text: "Yes",
+          onPress: () => {
+            startRecording();
+            setRecordingTime(0);
+          },
+        },
+      ]
+    );
   };
 
   const handleStopRecording = async () => {
+    await stopRecording(); // Pause the recording first
     Alert.alert("Stop Recording", "Do you want to save this route?", [
       {
         text: "Discard",
         onPress: async () => {
-          await stopRecording();
-          setRouteName("");
+          await discardRecording(); // Use discardRecording to clear the route
           setRecordingTime(0);
           setScreenshotUri(undefined);
         },
@@ -180,10 +183,7 @@ const HomePage = () => {
       },
       {
         text: "Save",
-        onPress: async () => {
-          // Capture screenshot of the map if possible
-          // Note: For now, we'll skip screenshot capture as it requires react-native-view-shot
-          // You can add it later by wrapping the map in a View with a ref
+        onPress: () => {
           setScreenshotUri(undefined);
           setShowSaveModal(true);
         },
@@ -192,51 +192,32 @@ const HomePage = () => {
   };
 
   const handleSaveRoute = async (
+    name: string,
     description: string,
     isPublic: boolean,
     routeType: string
   ) => {
-    if (!routeName.trim()) {
-      Alert.alert("Error", "Please enter a route name");
-      return;
-    }
-
     try {
-      await saveRoute(
-        routeName,
-        description,
-        isPublic,
-        routeType,
-        screenshotUri
-      );
+      await saveRoute(name, description, isPublic, routeType, screenshotUri);
       Alert.alert("Success", "Route saved successfully!");
       setShowSaveModal(false);
-      setRouteName("");
-      setRouteDescription("");
       setRecordingTime(0);
       setScreenshotUri(undefined);
 
-      // Navigate to appropriate page based on privacy setting
       if (isPublic) {
-        // Navigate to community page
         router.push("/(protected)/(tabs)/community");
       } else {
-        // Navigate to saved page
         router.push("/(protected)/(tabs)/saved");
       }
     } catch (error: any) {
-      // Check if this is a validation error from saveRoute (10 points or 1 minute check)
-      // These errors already show an Alert in the context, so don't show another one
       if (
         error?.message?.includes("Route must have") ||
-        error?.message?.includes("at least")
+        error?.message?.includes("at least") ||
+        error?.message?.includes("Route name is required")
       ) {
-        // This is a validation error - the alert was already shown in saveRoute
-        // Just return without showing another alert
         return;
       }
 
-      // Handle network errors gracefully
       if (
         error?.code === "ERR_NETWORK" ||
         error?.message?.includes("Network Error")
@@ -253,7 +234,6 @@ const HomePage = () => {
       } else {
         Alert.alert("Error", "Failed to save route. Please try again.");
       }
-      // Don't log network errors to console
       if (
         __DEV__ &&
         !(
@@ -263,7 +243,7 @@ const HomePage = () => {
       ) {
         console.warn("Error saving route:", error?.message || error);
       }
-      throw error; // Re-throw so modal can handle it
+      throw error;
     }
   };
 
@@ -279,16 +259,13 @@ const HomePage = () => {
 
   const formatDistance = (km: number) => {
     if (units === "miles") {
-      // Convert kilometers to miles
       const miles = km * 0.621371;
       if (miles < 1) {
-        // Convert to feet (1 mile = 5280 feet)
         const feet = miles * 5280;
         return `${feet.toFixed(0)}ft`;
       }
       return `${miles.toFixed(2)}mi`;
     } else {
-      // Default to kilometers
       if (km < 1) {
         return `${(km * 1000).toFixed(0)}m`;
       }
@@ -299,7 +276,7 @@ const HomePage = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Header - Styled with Darbna Brand Colors */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <SOSHeaderButton
@@ -386,71 +363,25 @@ const HomePage = () => {
             );
           })()}
 
-        {/* Route Name Input Modal */}
-        <Modal
-          visible={showRouteNameModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => {
-            setShowRouteNameModal(false);
-            setTempRouteName("");
-          }}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Route Name</Text>
-              <Text style={styles.modalSubtitle}>
-                Enter a name for this route:
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="My Route"
-                value={tempRouteName}
-                onChangeText={setTempRouteName}
-                placeholderTextColor={COLORS.lightText}
-                autoFocus={true}
-                onSubmitEditing={handleConfirmRouteName}
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => {
-                    setShowRouteNameModal(false);
-                    setTempRouteName("");
-                  }}
-                >
-                  <Text style={styles.modalButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    styles.saveButton,
-                    !tempRouteName.trim() && styles.modalButtonDisabled,
-                  ]}
-                  onPress={handleConfirmRouteName}
-                  disabled={!tempRouteName.trim()}
-                >
-                  <Text style={styles.modalButtonText}>Start</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
         {/* Save Route Modal */}
         <SaveRouteModal
           visible={showSaveModal}
-          routeName={routeName}
           distance={currentRoute?.distance || 0}
           duration={recordingTime}
           screenshotUri={screenshotUri}
           onSave={handleSaveRoute}
-          onCancel={() => setShowSaveModal(false)}
+          onCancel={() => {
+            setShowSaveModal(false);
+            // If user cancels save, discard the route
+            discardRecording();
+          }}
         />
+
         {/* SOS Modal */}
         <SOSModal
           visible={isSOSModalVisible}
           onClose={() => setSOSModalVisible(false)}
+          userLocation={userLocation}
         />
       </View>
     </SafeAreaView>
@@ -467,13 +398,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.white,
   },
-  // Header Styling - Darbna Brand
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    // paddingVertical: 14,
     backgroundColor: COLORS.darkSandBrown,
     borderBottomWidth: 0,
     elevation: 3,
@@ -572,97 +501,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 24,
-    width: "90%",
-    maxWidth: 400,
-    maxHeight: "80%",
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.sandBeige,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: COLORS.text,
-    backgroundColor: COLORS.offWhiteDesert,
-    marginBottom: 16,
-  },
-  descriptionInput: {
-    height: 100,
-    textAlignVertical: "top",
-  },
-  routeStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 20,
-    paddingVertical: 16,
-    backgroundColor: COLORS.offWhiteDesert,
-    borderRadius: 12,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.lightText,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    color: COLORS.desertOrange,
-    fontWeight: "700",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 20,
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cancelButton: {
-    backgroundColor: COLORS.sandBeige,
-  },
-  saveButton: {
-    backgroundColor: COLORS.desertOrange,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.white,
-  },
-  modalButtonDisabled: {
-    opacity: 0.5,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: COLORS.lightText,
-    marginBottom: 16,
-    textAlign: "center",
   },
 });
 

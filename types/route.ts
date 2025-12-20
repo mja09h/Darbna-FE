@@ -71,10 +71,11 @@ export interface IRouteRecordingState {
 
 // Represents functions available in route recording context
 export interface IRouteRecordingContext extends IRouteRecordingState {
-  startRecording: (routeName: string, description?: string) => void;
+  startRecording: (routeName?: string, description?: string) => void;
   stopRecording: () => Promise<void>;
   pauseRecording: () => void;
   resumeRecording: () => void;
+  discardRecording: () => void;
   addPoint: (point: IGPSPoint) => void;
   saveRoute: (
     routeName: string,
