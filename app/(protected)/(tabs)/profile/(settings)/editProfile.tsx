@@ -24,6 +24,7 @@ import CustomAlert, {
   AlertButton,
 } from "../../../../../components/CustomAlert";
 import * as ImagePicker from "expo-image-picker";
+import { BASE_URL } from "../../../../../api";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -74,6 +75,39 @@ const EditProfileSettings = () => {
   const filteredCountries = countries.filter((c) =>
     c.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Helper to get full image URL from relative path
+  const getProfileImageUri = (
+    profilePicture: string | null | undefined
+  ): string | null => {
+    if (!profilePicture) return null;
+
+    // If already a full URL, return as is
+    if (
+      profilePicture.startsWith("http://") ||
+      profilePicture.startsWith("https://")
+    ) {
+      return profilePicture;
+    }
+
+    // If it's a local file URI (from image picker), return as is
+    if (
+      profilePicture.startsWith("file://") ||
+      profilePicture.startsWith("content://")
+    ) {
+      return profilePicture;
+    }
+
+    // Otherwise, construct full URL from backend
+    const baseUrl = BASE_URL.replace("/api", "");
+    return `${baseUrl}${
+      profilePicture.startsWith("/") ? "" : "/"
+    }${profilePicture}`;
+  };
+
+  // Get the display image URI (use selected image or user's existing profile picture)
+  const displayImageUri =
+    profileImage || getProfileImageUri(user?.profilePicture);
 
   // --- Handlers ---
   const pickImage = async () => {
@@ -211,10 +245,13 @@ const EditProfileSettings = () => {
           {/* Profile Image Picker */}
           <View style={styles.imageContainer}>
             <TouchableOpacity onPress={pickImage} style={styles.imageWrapper}>
-              {profileImage ? (
+              {displayImageUri ? (
                 <Image
-                  source={{ uri: profileImage }}
+                  source={{ uri: displayImageUri }}
                   style={styles.profileImage}
+                  onError={(error) => {
+                    console.log("Error loading profile image:", error);
+                  }}
                 />
               ) : (
                 <View

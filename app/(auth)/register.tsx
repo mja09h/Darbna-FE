@@ -20,13 +20,10 @@ import { useAuth } from "../../context/AuthContext";
 import Toast, { ToastType } from "../../components/Toast";
 import CustomAlert, { AlertButton } from "../../components/CustomAlert";
 import axios from "axios";
-import { useAppleAuth } from "../../hooks/useAppleAuth";
-import { requestVerificationCode } from "../../api/auth";
 
 // --- Components ---
 import AuthInput from "../../components/AuthInput";
 import AuthButton from "../../components/AuthButton";
-import SocialButton from "../../components/SocialButton";
 
 // --- Types ---
 interface FormErrors {
@@ -42,7 +39,7 @@ const Register = () => {
   // --- Hooks ---
   const router = useRouter();
   const { t, language } = useLanguage();
-  const { register, appleLogin, isLoading, updateUserState } = useAuth();
+  const { register, isLoading, updateUserState } = useAuth();
 
   // --- Local State ---
   const [name, setName] = useState("");
@@ -54,7 +51,6 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(null);
 
   // --- Toast State ---
   const [toastVisible, setToastVisible] = useState(false);
@@ -85,29 +81,6 @@ const Register = () => {
     setToastType(type);
     setToastVisible(true);
   };
-
-  // --- OAuth Handlers ---
-
-  // Apple Authentication
-  const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
-    onSuccess: async (identityToken, user) => {
-      setOauthLoading("apple");
-      try {
-        await appleLogin({
-          identityToken,
-          email: user?.email,
-          fullName: user?.fullName,
-        });
-      } catch (error) {
-        showToast(t.auth.registerFailed, "error");
-      } finally {
-        setOauthLoading(null);
-      }
-    },
-    onError: (error) => {
-      showToast(error, "error");
-    },
-  });
 
   // --- Data & Helpers ---
   // const countries = getCountries(language);
@@ -276,28 +249,8 @@ const Register = () => {
         phone.trim()
       );
 
-      // New backend flow: registration does not send email automatically
-      // Request a verification code right after successful registration
-      try {
-        await requestVerificationCode(email.trim());
-      } catch (e) {
-        // If sending fails (e.g. mail server issue), still proceed to app
-        // and let the user request again from the Email screen
-        if (__DEV__) console.error("Request verification code failed:", e);
-      }
-
-      // Show verification email alert
-      showAlert(t.auth.checkEmail, t.auth.verificationSent, "success", [
-        {
-          text: "OK",
-          onPress: () => {
-            setAlertVisible(false);
-            // Update user state which triggers the redirect to home via AuthContext
-            updateUserState(user);
-          },
-          style: "default",
-        },
-      ]);
+      // Update user state which triggers the redirect to home via AuthContext
+      updateUserState(user);
     } catch (error) {
       let errorMessage = t.auth.registerFailed;
 
@@ -538,27 +491,6 @@ const Register = () => {
               isLoading={isLoading}
               style={{ marginTop: 10 }}
             />
-          </View>
-
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>{t.auth.or}</Text>
-            <View style={styles.divider} />
-          </View>
-
-          {/* Social Login Buttons */}
-          <View style={styles.socialButtonsColumn}>
-            {/* Apple Login */}
-            {Platform.OS === "ios" && isAppleAvailable && (
-              <SocialButton
-                title={t.auth.continueWithApple}
-                iconName="logo-apple"
-                onPress={signInWithApple}
-                isLoading={oauthLoading === "apple"}
-                disabled={isLoading || !!oauthLoading}
-              />
-            )}
           </View>
 
           {/* Login Link */}

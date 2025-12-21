@@ -305,18 +305,13 @@ const HomePage = () => {
               }
               activeOpacity={0.7}
             >
-              <Ionicons
-                name={currentRoute ? "square" : "play"}
-                size={24}
-                color={
-                  currentRoute && !isRecording
-                    ? COLORS.lightText
-                    : isRecording
-                    ? COLORS.white
-                    : COLORS.desertOrange
-                }
-                style={!currentRoute ? { marginLeft: 4 } : {}}
-              />
+              {isRecording ? (
+                <View style={styles.recordDot} />
+              ) : currentRoute ? (
+                <View style={styles.stopSquare} />
+              ) : (
+                <View style={styles.recordCircle} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -432,32 +427,58 @@ const styles = StyleSheet.create({
     height: 100,
   },
   recordButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.offWhiteDesert,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.white,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderWidth: 3,
+    borderColor: COLORS.desertOrange,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 6,
     elevation: 8,
   },
   recordButtonActive: {
-    backgroundColor: COLORS.desertOrange,
-    borderColor: COLORS.white,
-    shadowColor: COLORS.desertOrange,
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    backgroundColor: COLORS.white,
+    borderColor: "#FF0000", // Bright red for recording
+    shadowColor: "#FF0000",
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    borderWidth: 4,
   },
   recordButtonDisabled: {
     backgroundColor: COLORS.sandBeige,
-    opacity: 0.8,
-    borderColor: "transparent",
-    elevation: 0,
+    opacity: 0.6,
+    borderColor: COLORS.lightText,
+    elevation: 2,
+  },
+  recordDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#FF0000", // Bright red
+    shadowColor: "#FF0000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  recordCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.desertOrange,
+    borderWidth: 2,
+    borderColor: COLORS.desertOrange,
+  },
+  stopSquare: {
+    width: 18,
+    height: 18,
+    backgroundColor: COLORS.lightText,
+    borderRadius: 2,
   },
   statusBar: {
     position: "absolute",

@@ -14,6 +14,8 @@ import {
   FlatList,
   SafeAreaView,
   Dimensions,
+  Linking,
+  Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +24,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { IPinnedPlace, CreatePinData } from "../../../../types/map";
 import { getPinById } from "../../../../api/pins";
 import { BASE_URL } from "../../../../api/index";
+import { getUserById } from "../../../../api/user";
 import * as ImagePicker from "expo-image-picker";
 
 // Pin categories from backend
@@ -78,6 +81,7 @@ const PinDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Edit form state
   const [title, setTitle] = useState("");
@@ -86,6 +90,7 @@ const PinDetailPage = () => {
   const [isPublic, setIsPublic] = useState(true);
   const [images, setImages] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [creatorUsername, setCreatorUsername] = useState<string | null>(null);
 
   const MAX_IMAGES = 4;
 
@@ -102,22 +107,43 @@ const PinDetailPage = () => {
     const fetchPin = async () => {
       try {
         setLoading(true);
+        setCurrentImageIndex(0); // Reset image index
+        setCreatorUsername(null); // Reset creator username
+
         // First try to get from context
         const pinFromContext = pinnedPlaces.find((p) => p._id === pinId);
+        let pinData: IPinnedPlace;
+
         if (pinFromContext) {
-          setPin(pinFromContext);
-          setTitle(pinFromContext.title);
-          setDescription(pinFromContext.description || "");
-          setCategory(pinFromContext.category);
-          setIsPublic(pinFromContext.isPublic);
+          pinData = pinFromContext;
         } else {
           // If not in context, fetch from API
-          const fetchedPin = await getPinById(pinId);
-          setPin(fetchedPin);
-          setTitle(fetchedPin.title);
-          setDescription(fetchedPin.description || "");
-          setCategory(fetchedPin.category);
-          setIsPublic(fetchedPin.isPublic);
+          pinData = await getPinById(pinId);
+        }
+
+        setPin(pinData);
+        setTitle(pinData.title);
+        setDescription(pinData.description || "");
+        setCategory(pinData.category);
+        setIsPublic(pinData.isPublic);
+
+        // Handle userId - check if it's a string (ID) or object (populated)
+        if (typeof pinData.userId === "string") {
+          // userId is just an ID string, fetch user data
+          try {
+            const userData = await getUserById(pinData.userId);
+            setCreatorUsername(userData.username);
+          } catch (error) {
+            console.error("Error fetching user data:", error);
+            // Keep creatorUsername as null, will show "Unknown"
+          }
+        } else if (
+          pinData.userId &&
+          typeof pinData.userId === "object" &&
+          pinData.userId.username
+        ) {
+          // userId is already populated with username
+          setCreatorUsername(pinData.userId.username);
         }
       } catch (error) {
         console.error("Error fetching pin:", error);
@@ -237,6 +263,51 @@ const PinDetailPage = () => {
     setImages(images.filter((_, i) => i !== index));
   };
 
+  // Open directions in Google Maps
+  const openDirections = () => {
+    if (!pin || !pin.location || !pin.location.coordinates) {
+      Alert.alert("Error", "Location information is not available");
+      return;
+    }
+
+    const latitude = pin.location.coordinates[1];
+    const longitude = pin.location.coordinates[0];
+
+    // Google Maps URL scheme
+    const url = Platform.select({
+      ios: `maps://app?daddr=${latitude},${longitude}&directionsmode=driving`,
+      android: `google.navigation:q=${latitude},${longitude}`,
+    });
+
+    // Fallback to web URL if native app is not available
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+
+    if (url) {
+      Linking.canOpenURL(url)
+        .then((supported) => {
+          if (supported) {
+            return Linking.openURL(url);
+          } else {
+            return Linking.openURL(webUrl);
+          }
+        })
+        .catch((err) => {
+          console.error("Error opening maps:", err);
+          // Fallback to web URL
+          Linking.openURL(webUrl).catch((err) => {
+            Alert.alert("Error", "Could not open maps application");
+            console.error("Error opening web maps:", err);
+          });
+        });
+    } else {
+      // Fallback to web URL
+      Linking.openURL(webUrl).catch((err) => {
+        Alert.alert("Error", "Could not open maps application");
+        console.error("Error opening web maps:", err);
+      });
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -253,6 +324,7 @@ const PinDetailPage = () => {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
+          activeOpacity={0.8}
         >
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
@@ -290,8 +362,9 @@ const PinDetailPage = () => {
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+            <Ionicons name="arrow-back" size={22} color={COLORS.white} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Pin Details</Text>
@@ -300,8 +373,9 @@ const PinDetailPage = () => {
             <TouchableOpacity
               style={styles.headerButton}
               onPress={() => setIsEditing(true)}
+              activeOpacity={0.7}
             >
-              <Ionicons name="create-outline" size={24} color={COLORS.white} />
+              <Ionicons name="create-outline" size={22} color={COLORS.white} />
             </TouchableOpacity>
           )}
           {isOwner && isEditing && (
@@ -316,8 +390,9 @@ const PinDetailPage = () => {
                 setIsPublic(pin.isPublic);
                 setImages([]);
               }}
+              activeOpacity={0.7}
             >
-              <Ionicons name="close" size={24} color={COLORS.white} />
+              <Ionicons name="close" size={22} color={COLORS.white} />
             </TouchableOpacity>
           )}
           {!isOwner && <View style={styles.headerButton} />}
@@ -353,10 +428,11 @@ const PinDetailPage = () => {
                         <TouchableOpacity
                           style={styles.removeImageButton}
                           onPress={() => removeImage(index)}
+                          activeOpacity={0.8}
                         >
                           <Ionicons
                             name="close-circle"
-                            size={24}
+                            size={22}
                             color={COLORS.white}
                           />
                         </TouchableOpacity>
@@ -370,10 +446,11 @@ const PinDetailPage = () => {
                   <TouchableOpacity
                     style={styles.addImageButton}
                     onPress={pickImages}
+                    activeOpacity={0.8}
                   >
                     <Ionicons
                       name="add-circle-outline"
-                      size={32}
+                      size={36}
                       color={COLORS.desertOrange}
                     />
                     <Text style={styles.addImageButtonText}>
@@ -387,26 +464,54 @@ const PinDetailPage = () => {
             ) : (
               <>
                 {imageUris.length > 0 ? (
-                  <ScrollView
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={true}
-                    style={styles.imagesScrollView}
-                    contentContainerStyle={styles.imagesScrollContent}
-                  >
-                    {imageUris.map((uri, index) => (
-                      <Image
-                        key={index}
-                        source={{ uri }}
-                        style={styles.image}
-                      />
-                    ))}
-                  </ScrollView>
+                  <View style={styles.imageCarouselContainer}>
+                    <ScrollView
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.imagesScrollView}
+                      contentContainerStyle={styles.imagesScrollContent}
+                      onMomentumScrollEnd={(event) => {
+                        const index = Math.round(
+                          event.nativeEvent.contentOffset.x /
+                            Dimensions.get("window").width
+                        );
+                        setCurrentImageIndex(index);
+                      }}
+                    >
+                      {imageUris.map((uri, index) => (
+                        <View key={index} style={styles.imageWrapper}>
+                          <Image
+                            source={{ uri }}
+                            style={styles.image}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              console.error("Image load error:", error);
+                            }}
+                          />
+                        </View>
+                      ))}
+                    </ScrollView>
+                    {imageUris.length > 1 && (
+                      <View style={styles.imageIndicators}>
+                        {imageUris.map((_, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.indicator,
+                              index === currentImageIndex &&
+                                styles.indicatorActive,
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 ) : (
                   <View style={styles.imagePlaceholder}>
                     <Ionicons
                       name="image-outline"
-                      size={64}
+                      size={72}
                       color={COLORS.lightText}
                     />
                     <Text style={styles.imagePlaceholderText}>No Images</Text>
@@ -448,6 +553,7 @@ const PinDetailPage = () => {
                 <TouchableOpacity
                   style={styles.categoryButton}
                   onPress={() => setShowCategoryModal(true)}
+                  activeOpacity={0.7}
                 >
                   <Text
                     style={[
@@ -494,6 +600,7 @@ const PinDetailPage = () => {
                     setIsPublic(pin.isPublic);
                     setImages([]);
                   }}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
@@ -504,6 +611,7 @@ const PinDetailPage = () => {
                   ]}
                   onPress={handleSave}
                   disabled={saving}
+                  activeOpacity={0.8}
                 >
                   {saving ? (
                     <ActivityIndicator color={COLORS.white} />
@@ -545,11 +653,7 @@ const PinDetailPage = () => {
               <View style={styles.infoCard}>
                 <View style={styles.infoRow}>
                   <View style={styles.infoIconContainer}>
-                    <Ionicons
-                      name="pricetag"
-                      size={20}
-                      color={COLORS.desertOrange}
-                    />
+                    <Ionicons name="pricetag" size={22} color={COLORS.white} />
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Category</Text>
@@ -563,16 +667,15 @@ const PinDetailPage = () => {
 
                 <View style={styles.infoRow}>
                   <View style={styles.infoIconContainer}>
-                    <Ionicons
-                      name="person"
-                      size={20}
-                      color={COLORS.desertOrange}
-                    />
+                    <Ionicons name="person" size={22} color={COLORS.white} />
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Created by</Text>
                     <Text style={styles.infoText}>
-                      {pin.userId?.username || "Unknown"}
+                      {creatorUsername ||
+                        (typeof pin.userId === "object" && pin.userId?.username
+                          ? pin.userId.username
+                          : "Unknown")}
                     </Text>
                   </View>
                 </View>
@@ -581,11 +684,7 @@ const PinDetailPage = () => {
 
                 <View style={styles.infoRow}>
                   <View style={styles.infoIconContainer}>
-                    <Ionicons
-                      name="calendar"
-                      size={20}
-                      color={COLORS.desertOrange}
-                    />
+                    <Ionicons name="calendar" size={22} color={COLORS.white} />
                   </View>
                   <View style={styles.infoContent}>
                     <Text style={styles.infoLabel}>Created on</Text>
@@ -600,10 +699,21 @@ const PinDetailPage = () => {
                 </View>
               </View>
 
+              {/* Directions Button */}
+              <TouchableOpacity
+                style={styles.directionsButton}
+                onPress={openDirections}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="navigate" size={22} color={COLORS.white} />
+                <Text style={styles.directionsButtonText}>Get Directions</Text>
+              </TouchableOpacity>
+
               {isOwner && (
                 <TouchableOpacity
                   style={styles.deleteButton}
                   onPress={handleDelete}
+                  activeOpacity={0.8}
                 >
                   <Ionicons name="trash" size={20} color={COLORS.white} />
                   <Text style={styles.deleteButtonText}>Delete Pin</Text>
@@ -627,8 +737,9 @@ const PinDetailPage = () => {
                 <TouchableOpacity
                   onPress={() => setShowCategoryModal(false)}
                   style={styles.modalCloseButton}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={24} color={COLORS.text} />
+                  <Ionicons name="close" size={22} color={COLORS.text} />
                 </TouchableOpacity>
               </View>
               <FlatList
@@ -644,6 +755,7 @@ const PinDetailPage = () => {
                       setCategory(item);
                       setShowCategoryModal(false);
                     }}
+                    activeOpacity={0.7}
                   >
                     <Text
                       style={[
@@ -686,54 +798,67 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.offWhiteDesert,
+    padding: 20,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+    marginTop: 20,
+    fontSize: 17,
     color: COLORS.text,
+    fontWeight: "500",
   },
   errorText: {
-    fontSize: 18,
+    fontSize: 20,
     color: COLORS.red,
-    marginBottom: 16,
+    marginBottom: 24,
+    fontWeight: "600",
+    textAlign: "center",
   },
   backButton: {
     backgroundColor: COLORS.desertOrange,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   backButtonText: {
     color: COLORS.white,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: COLORS.darkSandBrown,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 0,
-    elevation: 3,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
   },
   headerButton: {
-    padding: 8,
-    width: 40,
+    padding: 10,
+    width: 44,
+    height: 44,
     alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
   },
   headerCenter: {
     flex: 1,
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: COLORS.white,
     letterSpacing: 0.5,
   },
@@ -741,31 +866,66 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 30,
   },
   imagesSection: {
     width: "100%",
-    marginBottom: 20,
+    marginBottom: 24,
+  },
+  imageCarouselContainer: {
+    position: "relative",
+    width: "100%",
   },
   imagesScrollView: {
     width: "100%",
-    height: 280,
+    height: 360,
   },
   imagesScrollContent: {
     alignItems: "center",
   },
-  image: {
+  imageWrapper: {
     width: Dimensions.get("window").width,
-    height: 280,
+    height: 360,
+    backgroundColor: COLORS.sandBeige,
+  },
+  image: {
+    width: "100%",
+    height: "100%",
     resizeMode: "cover",
+  },
+  imageIndicators: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    gap: 8,
+    paddingVertical: 8,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  indicatorActive: {
+    backgroundColor: COLORS.white,
+    width: 24,
   },
   imageItem: {
     position: "relative",
-    marginRight: 12,
-    width: 120,
-    height: 120,
-    borderRadius: 12,
+    marginRight: 16,
+    width: 140,
+    height: 140,
+    borderRadius: 16,
     overflow: "hidden",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   imageThumbnail: {
     width: "100%",
@@ -774,64 +934,86 @@ const styles = StyleSheet.create({
   },
   removeImageButton: {
     position: "absolute",
-    top: 4,
-    right: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: 12,
+    top: 6,
+    right: 6,
+    backgroundColor: "rgba(244, 67, 54, 0.9)",
+    borderRadius: 16,
+    padding: 4,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   addImageButton: {
-    marginTop: 12,
-    padding: 16,
+    marginTop: 16,
+    marginHorizontal: 20,
+    padding: 20,
     backgroundColor: COLORS.offWhiteDesert,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: COLORS.sandBeige,
+    borderColor: COLORS.desertOrange,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 10,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   addImageButtonText: {
     color: COLORS.desertOrange,
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   imagePlaceholder: {
     width: "100%",
-    height: 280,
+    height: 360,
     backgroundColor: COLORS.sandBeige,
     justifyContent: "center",
     alignItems: "center",
+    borderRadius: 0,
   },
   imagePlaceholderText: {
-    marginTop: 8,
-    fontSize: 16,
+    marginTop: 16,
+    fontSize: 18,
     color: COLORS.lightText,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
   detailsContainer: {
-    padding: 16,
+    padding: 20,
   },
   titleSection: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 32,
+    fontWeight: "800",
     color: COLORS.darkSandBrown,
-    marginBottom: 12,
-    letterSpacing: 0.3,
+    marginBottom: 14,
+    letterSpacing: 0.2,
+    lineHeight: 38,
   },
   badgeContainer: {
     flexDirection: "row",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
     gap: 6,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
   },
   badgePublic: {
     backgroundColor: COLORS.green,
@@ -841,216 +1023,303 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: COLORS.white,
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   descriptionCard: {
     backgroundColor: COLORS.offWhiteDesert,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1.5,
     borderColor: COLORS.sandBeige,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   description: {
-    fontSize: 16,
+    fontSize: 17,
     color: COLORS.text,
-    lineHeight: 24,
+    lineHeight: 26,
+    letterSpacing: 0.2,
   },
   infoCard: {
     backgroundColor: COLORS.offWhiteDesert,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1.5,
     borderColor: COLORS.sandBeige,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   infoIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.sandBeige,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.desertOrange,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
   },
   infoContent: {
     flex: 1,
   },
   infoLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.lightText,
-    marginBottom: 4,
-    fontWeight: "600",
+    marginBottom: 6,
+    fontWeight: "700",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   infoText: {
-    fontSize: 16,
+    fontSize: 17,
     color: COLORS.darkSandBrown,
-    fontWeight: "600",
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   divider: {
-    height: 1,
+    height: 1.5,
     backgroundColor: COLORS.sandBeige,
-    marginVertical: 8,
-    marginLeft: 52,
+    marginVertical: 12,
+    marginLeft: 64,
+    borderRadius: 1,
   },
   editForm: {
-    padding: 16,
+    padding: 20,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
     color: COLORS.darkSandBrown,
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: 0.2,
   },
   input: {
-    backgroundColor: COLORS.offWhiteDesert,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
     color: COLORS.text,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: COLORS.sandBeige,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   textArea: {
-    height: 100,
+    height: 120,
     textAlignVertical: "top",
+    paddingTop: 14,
   },
   categoryButton: {
-    backgroundColor: COLORS.offWhiteDesert,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: COLORS.sandBeige,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   categoryButtonText: {
     fontSize: 16,
     color: COLORS.text,
+    fontWeight: "600",
   },
   categoryButtonTextPlaceholder: {
     color: COLORS.lightText,
+    fontWeight: "400",
   },
   switchContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingVertical: 4,
   },
   switchHint: {
     fontSize: 14,
     color: COLORS.lightText,
-    marginTop: 4,
+    marginTop: 6,
+    fontStyle: "italic",
   },
   buttonRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
+    gap: 16,
+    marginTop: 12,
   },
   cancelButton: {
     flex: 1,
     backgroundColor: COLORS.sandBeige,
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   cancelButtonText: {
     color: COLORS.darkSandBrown,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
   saveButton: {
     flex: 1,
     backgroundColor: COLORS.desertOrange,
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    elevation: 3,
+    shadowColor: COLORS.desertOrange,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   saveButtonDisabled: {
     opacity: 0.6,
+    elevation: 1,
   },
   saveButtonText: {
     color: COLORS.white,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  directionsButton: {
+    backgroundColor: COLORS.desertOrange,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 12,
+    gap: 10,
+    elevation: 3,
+    shadowColor: COLORS.desertOrange,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  directionsButtonText: {
+    color: COLORS.white,
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   deleteButton: {
     backgroundColor: COLORS.red,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginTop: 8,
-    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    gap: 10,
+    elevation: 3,
+    shadowColor: COLORS.red,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   deleteButtonText: {
     color: COLORS.white,
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-    paddingBottom: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "75%",
+    paddingBottom: 40,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
+    padding: 20,
+    borderBottomWidth: 2,
     borderBottomColor: COLORS.sandBeige,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "700",
     color: COLORS.darkSandBrown,
+    letterSpacing: 0.3,
   },
   modalCloseButton: {
-    padding: 4,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.offWhiteDesert,
   },
   categoryItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    padding: 18,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.sandBeige,
   },
   categoryItemSelected: {
     backgroundColor: COLORS.offWhiteDesert,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.desertOrange,
   },
   categoryItemText: {
-    fontSize: 16,
+    fontSize: 17,
     color: COLORS.text,
+    fontWeight: "500",
   },
   categoryItemTextSelected: {
     color: COLORS.desertOrange,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });
 

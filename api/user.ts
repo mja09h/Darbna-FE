@@ -1,5 +1,7 @@
 import api from ".";
 import { User } from "../types/User";
+import { getToken } from "./storage";
+import { BASE_URL } from "./index";
 
 // Get current authenticated user
 const getCurrentUser = async (): Promise<User> => {
@@ -82,15 +84,33 @@ const updateUser = async (id: string, data: UpdateProfileData) => {
       // For now, let's keep it if it was working or assume object for new uploads.
     }
 
-    const response = await api.put(`/users/${id}`, formData, {
+    // Use fetch API directly for FormData - React Native's fetch handles FormData correctly
+    const token = await getToken();
+    const url = `${BASE_URL}/users/${id}`;
+
+    const response = await fetch(url, {
+      method: "PUT",
       headers: {
-        "Content-Type": "multipart/form-data",
+        Authorization: token ? `Bearer ${token}` : "",
+        // Don't set Content-Type - fetch will set multipart/form-data with boundary automatically
       },
+      body: formData,
     });
-    return response.data;
-  } catch (error) {
-    console.log("error", error);
-    throw error;
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+      throw new Error(errorData.message || `Server error: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    return responseData;
+  } catch (error: any) {
+    console.error("Error updating profile:", error);
+    if (error.message) {
+      throw error;
+    } else {
+      throw new Error("Network error: Failed to update profile. Please check your connection.");
+    }
   }
 };
 

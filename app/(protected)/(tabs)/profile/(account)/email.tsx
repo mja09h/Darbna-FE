@@ -134,9 +134,9 @@ const EmailScreen = () => {
           </Text>
           <View style={styles.inputContainer}>
             <View style={styles.labelRow}>
-              <Text style={[styles.label, { color: colors.text }]}>
-                {t.profile.email}
-              </Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              {t.profile.email}
+            </Text>
               {user?.isVerified ? (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
@@ -212,7 +212,7 @@ const EmailScreen = () => {
                   color={colors.textSecondary}
                 />
               </TouchableOpacity>
-            </View>
+        </View>
           </View>
 
           <TouchableOpacity

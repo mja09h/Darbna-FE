@@ -2,26 +2,6 @@ import api from ".";
 import { removeToken, setToken } from "./storage";
 import { User, AuthResponse } from "../types/User";
 
-// Apple OAuth
-interface AppleAuthData {
-  identityToken: string;
-  email?: string | null;
-  fullName?: {
-    givenName: string | null;
-    familyName: string | null;
-  } | null;
-}
-
-const appleAuth = async (data: AppleAuthData): Promise<AuthResponse> => {
-  try {
-    const response = await api.post<AuthResponse>("/auth/apple", data);
-    await setToken(response.data.token);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
 // Login
 const login = async (
   identifier: string,
@@ -258,9 +238,6 @@ export {
   resetPassword,
   requestPasswordResetCode,
   resetPasswordWithCode,
-  appleAuth,
   requestVerificationCode,
   verifyEmailCode,
 };
-
-export type { AppleAuthData };
