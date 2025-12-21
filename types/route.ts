@@ -1,4 +1,3 @@
-// Represents a single GPS point in a route
 export interface IGPSPoint {
   latitude: number;
   longitude: number;
@@ -42,6 +41,15 @@ export interface IRecordedRoute {
     url: string;
     uploadedAt: Date;
   }>;
+  // NEW FIELDS FOR START AND END POINTS
+  startPoint?: {
+    latitude: number;
+    longitude: number;
+  };
+  endPoint?: {
+    latitude: number;
+    longitude: number;
+  };
   createdAt: Date;
   updatedAt: Date;
   // User data (populated by backend)
@@ -64,6 +72,15 @@ export interface IRouteRecordingState {
     duration: number;
     isPublic?: boolean;
     routeType?: string;
+    // NEW FIELDS FOR START AND END POINTS
+    startPoint?: {
+      latitude: number;
+      longitude: number;
+    };
+    endPoint?: {
+      latitude: number;
+      longitude: number;
+    };
   } | null;
   recordedRoutes: IRecordedRoute[];
   selectedRoute: IRecordedRoute | null;

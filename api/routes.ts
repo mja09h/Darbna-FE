@@ -10,12 +10,20 @@ const createRoute = async (routeData: {
     coordinates: number[][];
   };
   startTime: Date;
-  endTime: Date;
+  endTime?: Date;
   distance: number;
   duration: number;
   points: any[];
   isPublic: boolean;
   routeType: string;
+  startPoint?: {
+    latitude: number;
+    longitude: number;
+  };
+  endPoint?: {
+    latitude: number;
+    longitude: number;
+  };
 }): Promise<IRecordedRoute> => {
   try {
     const response = await api.post<IRecordedRoute>("/routes", routeData);
