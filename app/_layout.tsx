@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import React, { useEffect } from "react";
 import * as Notifications from "expo-notifications";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { LanguageProvider } from "../context/LanguageContext";
 import { AuthProvider } from "../context/AuthContext";
@@ -34,8 +35,34 @@ const _layout = () => {
         }
       });
 
-    // Cleanup subscription on unmount
-    return () => Notifications.removeNotificationSubscription(responseListener);
+    // Handle deep links for password reset
+    const handleDeepLink = (event: { url: string }) => {
+      const { path, queryParams } = Linking.parse(event.url);
+      
+      if (path === "reset-password" && queryParams?.token) {
+        const token = queryParams.token as string;
+        router.push({
+          pathname: "/(auth)/resetPassword",
+          params: { token },
+        });
+      }
+    };
+
+    // Listen for deep links when app is already open
+    const linkingListener = Linking.addEventListener("url", handleDeepLink);
+
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      Notifications.removeNotificationSubscription(responseListener);
+      linkingListener.remove();
+    };
   }, [router]);
 
   return (

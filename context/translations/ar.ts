@@ -44,9 +44,27 @@ export const ar: TranslationKeys = {
     // Forgot Password
     forgotPasswordTitle: "نسيت كلمة المرور؟",
     forgotPasswordSubtitle:
-      "أدخل بريدك الإلكتروني وسنرسل لك رابطاً لإعادة تعيين كلمة المرور",
+      "اختر طريقة إعادة تعيين كلمة المرور",
     sendResetLink: "إرسال رابط إعادة التعيين",
+    sendResetCode: "إرسال رمز إعادة التعيين",
+    resetLinkSent: "إذا كان هناك حساب بهذا البريد الإلكتروني، تم إرسال رابط إعادة تعيين كلمة المرور.",
+    resetCodeSent: "إذا كان هناك حساب بهذا البريد الإلكتروني، تم إرسال رمز إعادة تعيين كلمة المرور.",
     backToLogin: "العودة لتسجيل الدخول",
+    chooseResetMethod: "اختر طريقة إعادة التعيين",
+    resetViaLink: "إعادة التعيين عبر رابط البريد الإلكتروني",
+    resetViaCode: "إعادة التعيين عبر رمز مكون من 6 أرقام",
+    resetLinkDescription: "سنرسل لك رابطاً في بريدك الإلكتروني لإعادة تعيين كلمة المرور",
+    resetCodeDescription: "سنرسل لك رمزاً مكوناً من 6 أرقام في بريدك الإلكتروني",
+    enterResetCode: "أدخل رمز إعادة التعيين",
+    resetCodeSubtitle: "أدخل الرمز المكون من 6 أرقام المرسل إلى بريدك الإلكتروني",
+    newPassword: "كلمة المرور الجديدة",
+    confirmNewPassword: "تأكيد كلمة المرور الجديدة",
+    resetPassword: "إعادة تعيين كلمة المرور",
+    resettingPassword: "جاري إعادة تعيين كلمة المرور...",
+    passwordResetSuccess: "تم إعادة تعيين كلمة المرور بنجاح",
+    passwordResetFailed: "فشل إعادة تعيين كلمة المرور",
+    invalidOrExpiredToken: "رمز إعادة التعيين غير صحيح أو منتهي الصلاحية",
+    invalidOrExpiredResetCode: "رمز إعادة التعيين غير صحيح أو منتهي الصلاحية",
 
     // Validation errors
     emailRequired: "البريد الإلكتروني أو اسم المستخدم مطلوب",
