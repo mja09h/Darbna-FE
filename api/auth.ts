@@ -137,16 +137,59 @@ const forgotPassword = async (email: string): Promise<{ message: string }> => {
 
 const resetPassword = async (
   token: string,
-  password: string
+  newPassword: string
 ): Promise<{ message: string }> => {
   try {
-    if (!token || !password) {
+    if (!token || !newPassword) {
       throw new Error("Token and password are required");
     }
 
     const response = await api.post("/auth/reset-password", {
       token,
-      password,
+      newPassword,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Code-based password reset
+const requestPasswordResetCode = async (
+  email: string
+): Promise<{ message: string }> => {
+  try {
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const response = await api.post("/auth/forgot-password", {
+      email: normalizedEmail,
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const resetPasswordWithCode = async (
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<{ message: string }> => {
+  try {
+    if (!email || !code || !newPassword) {
+      throw new Error("Email, code, and password are required");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedCode = code.trim();
+
+    const response = await api.post("/auth/reset-password", {
+      email: normalizedEmail,
+      code: normalizedCode,
+      newPassword,
     });
     return response.data;
   } catch (error) {
@@ -213,6 +256,8 @@ export {
   logout,
   forgotPassword,
   resetPassword,
+  requestPasswordResetCode,
+  resetPasswordWithCode,
   appleAuth,
   requestVerificationCode,
   verifyEmailCode,

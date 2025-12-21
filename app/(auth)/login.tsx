@@ -39,9 +39,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(
-    null
-  );
+  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(null);
 
   // --- Toast State ---
   const [toastVisible, setToastVisible] = useState(false);
@@ -317,7 +315,7 @@ const Login = () => {
             {/* Forgot Password Link */}
             <TouchableOpacity
               style={styles.forgotPassword}
-              onPress={() => router.push("/(auth)/forgotPassoword")}
+              onPress={() => router.push("/(auth)/forgotPassword")}
               disabled={isLoading}
             >
               <Text style={styles.forgotPasswordText}>

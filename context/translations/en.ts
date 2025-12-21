@@ -42,9 +42,27 @@ export const en = {
     // Forgot Password
     forgotPasswordTitle: "Forgot Password?",
     forgotPasswordSubtitle:
-      "Enter your email and we'll send you a link to reset your password",
+      "Choose how you'd like to reset your password",
     sendResetLink: "Send Reset Link",
+    sendResetCode: "Send Reset Code",
+    resetLinkSent: "If an account with that email exists, a password reset link has been sent.",
+    resetCodeSent: "If an account with that email exists, a password reset code has been sent.",
     backToLogin: "Back to Login",
+    chooseResetMethod: "Choose Reset Method",
+    resetViaLink: "Reset via Email Link",
+    resetViaCode: "Reset via 6-Digit Code",
+    resetLinkDescription: "We'll send you a link in your email to reset your password",
+    resetCodeDescription: "We'll send you a 6-digit code in your email",
+    enterResetCode: "Enter Reset Code",
+    resetCodeSubtitle: "Enter the 6-digit code sent to your email",
+    newPassword: "New Password",
+    confirmNewPassword: "Confirm New Password",
+    resetPassword: "Reset Password",
+    resettingPassword: "Resetting password...",
+    passwordResetSuccess: "Password reset successfully",
+    passwordResetFailed: "Failed to reset password",
+    invalidOrExpiredToken: "Invalid or expired reset token",
+    invalidOrExpiredResetCode: "Invalid or expired reset code",
 
     // Validation errors
     emailRequired: "Email or username is required",
