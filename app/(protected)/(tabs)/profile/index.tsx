@@ -116,23 +116,6 @@ const ProfileScreen = () => {
             )}
           </View>
         </View>
-
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {user?.followers?.length || 0}
-            </Text>
-            <Text style={styles.statLabel}>{t.profile.followers}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {user?.following?.length || 0}
-            </Text>
-            <Text style={styles.statLabel}>{t.profile.following}</Text>
-          </View>
-        </View>
       </View>
 
       {/* Content Section */}
@@ -330,30 +313,6 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     fontSize: 12,
     fontWeight: "600",
-  },
-  statsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 30,
-    marginTop: 10,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#f5e6d3",
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#a89080",
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: "#3d2818",
   },
   content: {
     flex: 1,
