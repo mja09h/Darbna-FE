@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ISavedRoute } from "../context/SavedRoutesContext";
@@ -21,6 +22,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/index";
 import { useLanguage } from "../context/LanguageContext";
+import InteractiveMap from "./InteractiveMap";
 
 const { width, height } = Dimensions.get("window");
 
@@ -46,6 +48,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
 
   // Edit form state
   const [editedName, setEditedName] = useState("");
@@ -152,394 +155,278 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
 
       Alert.alert("Success", "Route updated successfully");
       setIsEditMode(false);
-      if (onRouteUpdated) {
-        onRouteUpdated();
-      }
-    } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to update route"
-      );
+      onRouteUpdated?.();
+    } catch (error) {
+      Alert.alert("Error", "Failed to update route");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditedName(route.routeId?.name || "");
-    setEditedDescription(route.routeId?.description || "");
-    setEditedIsPublic(route.isFavorite || false);
-    setEditedRouteType(route.routeId?.routeType || "Other");
-    setEditedDifficulty(route.routeId?.difficulty || "Moderate");
-    setEditedLocation(route.routeId?.location || "");
-    setIsEditMode(false);
-  };
-
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Route",
-      "Are you sure you want to delete this route? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            if (onRouteDeleted) {
-              onRouteDeleted(route._id);
-            }
-          },
+    Alert.alert("Delete Route", "Are you sure you want to delete this route?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          onRouteDeleted?.(route._id);
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const images = [
-    route.routeId?.screenshot?.url,
-    ...(route.routeId?.images?.map((img: any) => img.url) || []),
-  ].filter(Boolean);
+  // NEW: Handle Map button press
+  const handleShowMap = () => {
+    console.log("Map button pressed");
+    console.log("Route data:", JSON.stringify(route, null, 2));
+    setShowMapModal(true);
+  };
+
+  // NEW: Handle Get Directions button press
+  const handleGetDirections = async () => {
+    try {
+      const startPoint = route.routeId?.startPoint;
+
+      console.log("Get Directions pressed");
+      console.log("Start point:", startPoint);
+
+      if (!startPoint || !startPoint.latitude || !startPoint.longitude) {
+        Alert.alert("Error", "Start point not available for this route");
+        return;
+      }
+
+      const latitude = startPoint.latitude;
+      const longitude = startPoint.longitude;
+
+      // Try Google Maps first
+      const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+      const appleMapsUrl = `maps://maps.apple.com/?daddr=${latitude},${longitude}`;
+
+      try {
+        await Linking.openURL(googleMapsUrl);
+      } catch (error) {
+        try {
+          await Linking.openURL(appleMapsUrl);
+        } catch (appleMapsError) {
+          Alert.alert("Error", "No maps application available on your device");
+        }
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to open directions");
+    }
+  };
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View
+      style={[
+        styles.header,
+        {
+          backgroundColor: colors.background,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
       <TouchableOpacity
-        style={[styles.headerButton, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+        style={[
+          styles.headerButton,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
         onPress={onClose}
       >
-        <Ionicons name="arrow-back" size={24} color="#fff" />
+        <Ionicons name="chevron-back" size={24} color={colors.text} />
       </TouchableOpacity>
 
-      {isCreator && !isEditMode && (
-        <TouchableOpacity
-          style={[styles.headerButton, { backgroundColor: "rgba(0,0,0,0.5)" }]}
-          onPress={() => setIsEditMode(true)}
-        >
-          <Ionicons name="create-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-
-  const renderHeroImage = () => (
-    <View style={styles.heroImageContainer}>
-      {images.length > 0 ? (
-        <>
-          <Image
-            source={{ uri: images[currentImageIndex] }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-          {images.length > 1 && (
-            <View style={styles.imageIndicators}>
-              {images.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.indicator,
-                    {
-                      backgroundColor:
-                        index === currentImageIndex
-                          ? "#fff"
-                          : "rgba(255,255,255,0.5)",
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-        </>
-      ) : (
-        <View
-          style={[styles.placeholderImage, { backgroundColor: colors.surface }]}
-        >
-          <Ionicons
-            name="image-outline"
-            size={80}
-            color={colors.textSecondary}
-          />
-        </View>
-      )}
-    </View>
-  );
-
-  const renderEditMode = () => (
-    <View
-      style={[styles.editContainer, { backgroundColor: colors.background }]}
-    >
-      <Text style={[styles.editLabel, { color: colors.text }]}>
-        Route Name *
+      <Text
+        style={[styles.headerTitle, { color: colors.text }]}
+        numberOfLines={1}
+      >
+        {route?.routeId?.name}
       </Text>
-      <TextInput
-        style={[
-          styles.editInput,
-          {
-            backgroundColor: colors.surface,
-            color: colors.text,
-            borderColor: colors.border,
-          },
-        ]}
-        value={editedName}
-        onChangeText={setEditedName}
-        placeholder="Enter route name"
-        placeholderTextColor={colors.textSecondary}
-      />
-
-      <Text style={[styles.editLabel, { color: colors.text }]}>
-        Description
-      </Text>
-      <TextInput
-        style={[
-          styles.editTextArea,
-          {
-            backgroundColor: colors.surface,
-            color: colors.text,
-            borderColor: colors.border,
-          },
-        ]}
-        value={editedDescription}
-        onChangeText={setEditedDescription}
-        placeholder="Enter route description"
-        placeholderTextColor={colors.textSecondary}
-        multiline
-        numberOfLines={4}
-      />
-
-      <Text style={[styles.editLabel, { color: colors.text }]}>Location</Text>
-      <TextInput
-        style={[
-          styles.editInput,
-          {
-            backgroundColor: colors.surface,
-            color: colors.text,
-            borderColor: colors.border,
-          },
-        ]}
-        value={editedLocation}
-        onChangeText={setEditedLocation}
-        placeholder="e.g., Riyadh, Saudi Arabia"
-        placeholderTextColor={colors.textSecondary}
-      />
-
-      <View style={styles.switchRow}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>
-          Public Route
-        </Text>
-        <Switch
-          value={editedIsPublic}
-          onValueChange={setEditedIsPublic}
-          trackColor={{ false: colors.border, true: colors.primary }}
-          thumbColor={editedIsPublic ? colors.background : colors.textSecondary}
-        />
-      </View>
-
-      <Text style={[styles.editLabel, { color: colors.text }]}>Route Type</Text>
-      <View style={styles.optionsRow}>
-        {["Running", "Cycling", "Walking", "Hiking", "Other"].map((type) => (
-          <TouchableOpacity
-            key={type}
-            style={[
-              styles.optionChip,
-              {
-                backgroundColor:
-                  editedRouteType === type ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={() => setEditedRouteType(type)}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                {
-                  color:
-                    editedRouteType === type ? colors.background : colors.text,
-                },
-              ]}
-            >
-              {type}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={[styles.editLabel, { color: colors.text }]}>Difficulty</Text>
-      <View style={styles.optionsRow}>
-        {["Easy", "Moderate", "Hard"].map((diff) => (
-          <TouchableOpacity
-            key={diff}
-            style={[
-              styles.optionChip,
-              {
-                backgroundColor:
-                  editedDifficulty === diff ? colors.primary : colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={() => setEditedDifficulty(diff)}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                {
-                  color:
-                    editedDifficulty === diff ? colors.background : colors.text,
-                },
-              ]}
-            >
-              {diff}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.editActions}>
-        <TouchableOpacity
-          style={[
-            styles.editButton,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-          onPress={handleCancelEdit}
-          disabled={isSaving}
-        >
-          <Text style={[styles.editButtonText, { color: colors.text }]}>
-            Cancel
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.editButton, { backgroundColor: colors.primary }]}
-          onPress={handleSaveEdit}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={[styles.editButtonText, { color: colors.background }]}>
-              Save Changes
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
 
       {isCreator && (
         <TouchableOpacity
-          style={[styles.deleteButton, { backgroundColor: "#F44336" }]}
-          onPress={handleDelete}
-          disabled={isSaving}
+          style={[
+            styles.headerButton,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+          onPress={() => setIsEditMode(!isEditMode)}
         >
-          <Ionicons name="trash-outline" size={20} color="#fff" />
-          <Text style={styles.deleteButtonText}>Delete Route</Text>
+          <Ionicons
+            name={isEditMode ? "close" : "pencil"}
+            size={24}
+            color={colors.text}
+          />
         </TouchableOpacity>
       )}
     </View>
   );
 
+  const renderHeroImage = () => {
+    const images = [
+      ...(route?.routeId?.screenshot ? [route.routeId.screenshot.url] : []),
+      ...(route?.routeId?.images?.map((img: any) => img.url) || []),
+    ];
+
+    if (images.length === 0) {
+      return (
+        <View
+          style={[styles.heroImage, { backgroundColor: colors.primaryLight }]}
+        >
+          <Ionicons name="map-outline" size={64} color={colors.primary} />
+        </View>
+      );
+    }
+
+    return (
+      <View>
+        <Image
+          source={{ uri: images[currentImageIndex] }}
+          style={styles.heroImage}
+        />
+        {images.length > 1 && (
+          <View style={styles.imageIndicator}>
+            {images.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor:
+                      index === currentImageIndex ? colors.primary : "#ccc",
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   const renderViewMode = () => (
     <>
-      <View style={[styles.infoCard, { backgroundColor: colors.background }]}>
-        <View style={styles.titleRow}>
-          <Text style={[styles.routeName, { color: colors.text }]}>
-            {route.routeId?.name || "Unnamed Route"}
+      {/* Route Stats */}
+      <View
+        style={[styles.statsContainer, { backgroundColor: colors.surface }]}
+      >
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Distance
+          </Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {formatDistance(route?.routeId?.distance || 0)}
           </Text>
         </View>
 
-        <View style={styles.ratingRow}>
-          <View style={styles.ratingStars}>
-            {[...Array(5)].map((_, i) => (
-              <Ionicons
-                key={i}
-                name={
-                  i < Math.floor(route.routeId?.rating || 0)
-                    ? "star"
-                    : "star-outline"
-                }
-                size={16}
-                color="#FFD700"
-              />
-            ))}
-            <Text style={[styles.ratingText, { color: colors.textSecondary }]}>
-              {route.routeId?.rating?.toFixed(1) || "4.0"}
+        <View style={styles.statDivider} />
+
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Elevation
+          </Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {formatElevation(route?.routeId?.elevationGain || 0)}
+          </Text>
+        </View>
+
+        <View style={styles.statDivider} />
+
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Time
+          </Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {formatDuration(route?.routeId?.duration || 0)}
+          </Text>
+        </View>
+
+        <View style={styles.statDivider} />
+
+        <View style={styles.statItem}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            Type
+          </Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {getRouteTypeLabel(route?.routeId?.routeType)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Route Details */}
+      <View style={styles.detailsContainer}>
+        {/* Difficulty */}
+        {route?.routeId?.difficulty && (
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+              Difficulty
             </Text>
-          </View>
-          <View
-            style={[
-              styles.difficultyBadge,
-              {
-                backgroundColor:
-                  getDifficultyColor(route.routeId?.difficulty || "Moderate") +
-                  "20",
-              },
-            ]}
-          >
-            <Text
+            <View
               style={[
-                styles.difficultyText,
+                styles.difficultyBadge,
                 {
-                  color: getDifficultyColor(
-                    route.routeId?.difficulty || "Moderate"
-                  ),
+                  backgroundColor:
+                    getDifficultyColor(route.routeId.difficulty) + "20",
                 },
               ]}
             >
-              {route.routeId?.difficulty || "Moderate"}
-            </Text>
-          </View>
-          {route.routeId?.location && (
-            <Text
-              style={[styles.locationText, { color: colors.textSecondary }]}
-            >
-              • {route.routeId.location}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {formatDistance(route.routeId?.distance || 0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Length
-            </Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {formatElevation(route.routeId?.elevationGain || 0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Elevation gain
-            </Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {route.routeId?.estimatedTime ||
-                formatDuration(route.routeId?.duration || 0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              Estimated time
-            </Text>
-          </View>
-          <View style={styles.statBox}>
-            <View style={styles.routeTypeIcon}>
-              <Ionicons name="repeat-outline" size={24} color={colors.text} />
+              <Text
+                style={[
+                  styles.difficultyText,
+                  {
+                    color: getDifficultyColor(route.routeId.difficulty),
+                  },
+                ]}
+              >
+                {route.routeId.difficulty}
+              </Text>
             </View>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              {getRouteTypeLabel(route.routeId?.routeType)}
-            </Text>
           </View>
-        </View>
+        )}
 
-        {route.routeId?.description && (
+        {/* Rating */}
+        {route?.routeId?.rating && (
+          <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+              Rating
+            </Text>
+            <View style={styles.ratingContainer}>
+              {[...Array(5)].map((_, i) => (
+                <Ionicons
+                  key={i}
+                  name={
+                    i < Math.floor(route.routeId.rating || 0)
+                      ? "star"
+                      : "star-outline"
+                  }
+                  size={16}
+                  color="#FFB800"
+                />
+              ))}
+              <Text style={[styles.ratingText, { color: colors.text }]}>
+                {route.routeId.rating?.toFixed(1)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Description */}
+        {route?.routeId?.description && (
           <View style={styles.descriptionContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Description
+            </Text>
             <Text
-              style={[styles.description, { color: colors.text }]}
+              style={[styles.descriptionText, { color: colors.textSecondary }]}
               numberOfLines={showFullDescription ? undefined : 3}
             >
               {route.routeId.description}
             </Text>
-            {route.routeId.description.length > 150 && (
+            {route.routeId.description.length > 100 && (
               <TouchableOpacity
                 onPress={() => setShowFullDescription(!showFullDescription)}
               >
-                <Text style={[styles.showMoreText, { color: colors.primary }]}>
+                <Text style={[styles.readMore, { color: colors.primary }]}>
                   {showFullDescription ? "Show less" : "Show more"}
                 </Text>
               </TouchableOpacity>
@@ -547,80 +434,331 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
           </View>
         )}
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="create-outline" size={20} color={colors.text} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              Customize route
+        {/* Route Points */}
+        {(route?.routeId?.startPoint || route?.routeId?.endPoint) && (
+          <View style={styles.pointsContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Route Points
             </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="car-outline" size={20} color={colors.text} />
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>
-              Get directions
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {route?.routeId?.startPoint && (
+              <View style={styles.pointRow}>
+                <Ionicons name="location" size={20} color="#4CAF50" />
+                <View style={styles.pointInfo}>
+                  <Text style={[styles.pointLabel, { color: colors.text }]}>
+                    Start Point
+                  </Text>
+                  <Text
+                    style={[
+                      styles.pointCoords,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {route.routeId.startPoint.latitude.toFixed(6)},{" "}
+                    {route.routeId.startPoint.longitude.toFixed(6)}
+                  </Text>
+                </View>
+              </View>
+            )}
 
-        <View style={styles.bottomActions}>
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-          >
-            <Ionicons
-              name="download-outline"
-              size={20}
-              color={colors.background}
-            />
-            <Text
-              style={[styles.primaryButtonText, { color: colors.background }]}
-            >
-              Download
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons name="map-outline" size={20} color={colors.text} />
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              Map
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {route?.routeId?.endPoint && (
+              <View style={styles.pointRow}>
+                <Ionicons name="location" size={20} color="#F44336" />
+                <View style={styles.pointInfo}>
+                  <Text style={[styles.pointLabel, { color: colors.text }]}>
+                    End Point
+                  </Text>
+                  <Text
+                    style={[
+                      styles.pointCoords,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    {route.routeId.endPoint.latitude.toFixed(6)},{" "}
+                    {route.routeId.endPoint.longitude.toFixed(6)}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </View>
+
+      {/* Action Buttons */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+          onPress={handleGetDirections}
+        >
+          <Ionicons name="navigate" size={20} color="#fff" />
+          <Text style={styles.primaryButtonText}>Get Directions</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.secondaryButton,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+          onPress={handleShowMap}
+        >
+          <Ionicons name="map-outline" size={20} color={colors.text} />
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+            Map
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Delete Button */}
+      {isCreator && (
+        <TouchableOpacity
+          style={[
+            styles.deleteButton,
+            { backgroundColor: "rgba(244, 67, 54, 0.1)" },
+          ]}
+          onPress={handleDelete}
+        >
+          <Ionicons name="trash-outline" size={20} color="#F44336" />
+          <Text style={styles.deleteButtonText}>Delete Route</Text>
+        </TouchableOpacity>
+      )}
     </>
   );
 
-  return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
-        {renderHeader()}
+  const renderEditMode = () => (
+    <View style={styles.editContainer}>
+      {/* Name */}
+      <View style={styles.editField}>
+        <Text style={[styles.editLabel, { color: colors.text }]}>
+          Route Name
+        </Text>
+        <TextInput
+          style={[
+            styles.editInput,
+            {
+              backgroundColor: colors.surface,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+          ]}
+          value={editedName}
+          onChangeText={setEditedName}
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      {/* Description */}
+      <View style={styles.editField}>
+        <Text style={[styles.editLabel, { color: colors.text }]}>
+          Description
+        </Text>
+        <TextInput
+          style={[
+            styles.editInput,
+            styles.editTextArea,
+            {
+              backgroundColor: colors.surface,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+          ]}
+          value={editedDescription}
+          onChangeText={setEditedDescription}
+          multiline
+          numberOfLines={4}
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      {/* Route Type */}
+      <View style={styles.editField}>
+        <Text style={[styles.editLabel, { color: colors.text }]}>
+          Route Type
+        </Text>
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.typeSelector}
         >
-          {renderHeroImage()}
-          {isEditMode ? renderEditMode() : renderViewMode()}
+          {["Running", "Cycling", "Walking", "Hiking", "Other"].map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.typeOption,
+                {
+                  backgroundColor:
+                    editedRouteType === type ? colors.primary : colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => setEditedRouteType(type)}
+            >
+              <Text
+                style={[
+                  styles.typeOptionText,
+                  {
+                    color: editedRouteType === type ? "#fff" : colors.text,
+                  },
+                ]}
+              >
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
-      </SafeAreaView>
-    </Modal>
+      </View>
+
+      {/* Difficulty */}
+      <View style={styles.editField}>
+        <Text style={[styles.editLabel, { color: colors.text }]}>
+          Difficulty
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.typeSelector}
+        >
+          {["Easy", "Moderate", "Hard"].map((diff) => (
+            <TouchableOpacity
+              key={diff}
+              style={[
+                styles.typeOption,
+                {
+                  backgroundColor:
+                    editedDifficulty === diff ? colors.primary : colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => setEditedDifficulty(diff)}
+            >
+              <Text
+                style={[
+                  styles.typeOptionText,
+                  {
+                    color: editedDifficulty === diff ? "#fff" : colors.text,
+                  },
+                ]}
+              >
+                {diff}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Location */}
+      <View style={styles.editField}>
+        <Text style={[styles.editLabel, { color: colors.text }]}>Location</Text>
+        <TextInput
+          style={[
+            styles.editInput,
+            {
+              backgroundColor: colors.surface,
+              color: colors.text,
+              borderColor: colors.border,
+            },
+          ]}
+          value={editedLocation}
+          onChangeText={setEditedLocation}
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      {/* Public Switch */}
+      <View style={styles.editField}>
+        <Text style={[styles.editLabel, { color: colors.text }]}>
+          Make Public
+        </Text>
+        <Switch
+          value={editedIsPublic}
+          onValueChange={setEditedIsPublic}
+          trackColor={{ false: colors.border, true: colors.primary }}
+        />
+      </View>
+
+      {/* Save Button */}
+      <TouchableOpacity
+        style={[styles.saveButton, { backgroundColor: colors.primary }]}
+        onPress={handleSaveEdit}
+        disabled={isSaving}
+      >
+        {isSaving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="checkmark" size={20} color="#fff" />
+            <Text style={styles.saveButtonText}>Save Changes</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <>
+      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
+          {renderHeader()}
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderHeroImage()}
+            {isEditMode ? renderEditMode() : renderViewMode()}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Map Modal */}
+      {showMapModal && route?.routeId?.path && (
+        <Modal
+          visible={showMapModal}
+          animationType="slide"
+          onRequestClose={() => setShowMapModal(false)}
+        >
+          <SafeAreaView
+            style={[styles.container, { backgroundColor: colors.background }]}
+          >
+            <View style={styles.mapHeader}>
+              <TouchableOpacity
+                style={[
+                  styles.headerButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => setShowMapModal(false)}
+              >
+                <Ionicons name="chevron-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
+                Route Map
+              </Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            <InteractiveMap
+              userLocation={null}
+              currentRoute={
+                route.routeId?.points && route.routeId.points.length > 0
+                  ? {
+                      name: route.routeId.name || "",
+                      description: route.routeId.description || "",
+                      points: route.routeId.points,
+                      startTime: null,
+                      distance: route.routeId.distance || 0,
+                      duration: route.routeId.duration || 0,
+                    }
+                  : null
+              }
+            />
+          </SafeAreaView>
+        </Modal>
+      )}
+    </>
   );
 };
 
@@ -629,14 +767,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    position: "absolute",
-    top: 50,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    zIndex: 10,
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  mapHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   headerButton: {
     width: 40,
@@ -644,161 +788,163 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "center",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
-  },
-  heroImageContainer: {
-    width: width,
-    height: height * 0.4,
-    position: "relative",
+    paddingBottom: 20,
   },
   heroImage: {
     width: "100%",
-    height: "100%",
-  },
-  placeholderImage: {
-    width: "100%",
-    height: "100%",
+    height: 300,
     justifyContent: "center",
     alignItems: "center",
   },
-  imageIndicators: {
-    position: "absolute",
-    bottom: 20,
-    left: 0,
-    right: 0,
+  imageIndicator: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 8,
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: 6,
   },
-  indicator: {
+  dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  infoCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    padding: 24,
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
   },
-  titleRow: {
-    marginBottom: 12,
+  statItem: {
+    alignItems: "center",
   },
-  routeName: {
-    fontSize: 28,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+  statLabel: {
+    fontSize: 12,
+    marginBottom: 4,
   },
-  ratingRow: {
+  statValue: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "#e0e0e0",
+  },
+  detailsContainer: {
+    paddingHorizontal: 16,
+    marginTop: 20,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  detailLabel: {
+    fontSize: 14,
+  },
+  difficultyBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  difficultyText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
-    flexWrap: "wrap",
-  },
-  ratingStars: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 12,
+    gap: 4,
   },
   ratingText: {
     fontSize: 14,
     fontWeight: "600",
-    marginLeft: 6,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  difficultyText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  locationText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 24,
-  },
-  statBox: {
-    width: "48%",
-    marginBottom: 16,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  routeTypeIcon: {
-    marginBottom: 4,
+    marginLeft: 8,
   },
   descriptionContainer: {
-    marginBottom: 24,
+    marginTop: 20,
   },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
     marginBottom: 8,
   },
-  showMoreText: {
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  readMore: {
     fontSize: 14,
     fontWeight: "600",
+    marginTop: 8,
   },
-  actionButtons: {
-    gap: 12,
-    marginBottom: 16,
+  pointsContainer: {
+    marginTop: 20,
+    paddingBottom: 20,
   },
-  actionButton: {
+  pointRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
+    alignItems: "flex-start",
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.05)",
   },
-  actionButtonText: {
-    fontSize: 15,
+  pointInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  pointLabel: {
+    fontSize: 14,
     fontWeight: "600",
+    marginBottom: 2,
   },
-  bottomActions: {
+  pointCoords: {
+    fontSize: 12,
+  },
+  buttonContainer: {
     flexDirection: "row",
     gap: 12,
+    paddingHorizontal: 16,
+    marginTop: 20,
   },
   primaryButton: {
-    flex: 2,
+    flex: 1,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 12,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
     gap: 8,
   },
   primaryButtonText: {
+    color: "#fff",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   secondaryButton: {
     flex: 1,
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 12,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
     gap: 8,
   },
@@ -806,86 +952,72 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-
-  // Edit Mode Styles
-  editContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    padding: 24,
-  },
-  editLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  editInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-  },
-  editTextArea: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-  switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  optionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
-  },
-  optionChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  optionText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
-  editButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  editButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
   deleteButton: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 16,
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
     gap: 8,
   },
   deleteButtonText: {
+    color: "#F44336",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  editContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  editField: {
+    marginBottom: 16,
+  },
+  editLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  editTextArea: {
+    textAlignVertical: "top",
+    paddingTop: 10,
+  },
+  typeSelector: {
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+  },
+  typeOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+  },
+  typeOptionText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  saveButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+    gap: 8,
+  },
+  saveButtonText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

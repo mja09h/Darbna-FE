@@ -50,6 +50,14 @@ export interface ISavedRoute {
       elevation?: number;
       speed?: number;
     }>;
+    startPoint?: {
+      latitude: number;
+      longitude: number;
+    };
+    endPoint?: {
+      latitude: number;
+      longitude: number;
+    };
   };
   folderId: IFolder;
   difficulty?: string;
@@ -99,7 +107,6 @@ export const SavedRoutesProvider: React.FC<{ children: ReactNode }> = ({
       const response = await api.get("/folders");
       setFolders(response.data.data || []);
     } catch (error: any) {
-      // Silently fail - endpoint may not exist yet
       setFolders([]);
     }
   }, []);
@@ -111,7 +118,6 @@ export const SavedRoutesProvider: React.FC<{ children: ReactNode }> = ({
       const response = await api.get("/saved-routes", { params });
       setSavedRoutes(response.data.data || []);
     } catch (error: any) {
-      // Silently fail - endpoint may not exist yet
       setSavedRoutes([]);
     } finally {
       setLoading(false);

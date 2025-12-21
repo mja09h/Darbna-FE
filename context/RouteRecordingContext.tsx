@@ -66,6 +66,8 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         startTime: now,
         distance: 0,
         duration: 0,
+        startPoint: undefined,
+        endPoint: undefined,
       },
     }));
   }, []);
@@ -78,6 +80,18 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         const updatedPoints = [...prevState.currentRoute.points, point];
         let totalDistance = prevState.currentRoute.distance;
         let duration = 0;
+
+        // NEW: Set start point on first GPS point
+        const startPoint = prevState.currentRoute.startPoint || {
+          latitude: point.latitude,
+          longitude: point.longitude,
+        };
+
+        // NEW: Update end point with current point
+        const endPoint = {
+          latitude: point.latitude,
+          longitude: point.longitude,
+        };
 
         if (updatedPoints.length > 1) {
           const previousPoint = updatedPoints[updatedPoints.length - 2];
@@ -98,6 +112,8 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
             points: updatedPoints,
             distance: totalDistance,
             duration,
+            startPoint,
+            endPoint,
           },
         };
       });
@@ -172,6 +188,8 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
           })),
           isPublic: isPublic,
           routeType: routeType,
+          startPoint: state.currentRoute.startPoint,
+          endPoint: state.currentRoute.endPoint,
         };
 
         const savedRoute = await createRoute(routeData as any);
@@ -210,7 +228,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         setState((prevState) => ({
           ...prevState,
           recordedRoutes: [...prevState.recordedRoutes, savedRoute],
-          currentRoute: null, // Correctly clear currentRoute after saving
+          currentRoute: null,
           isRecording: false,
         }));
 
@@ -239,7 +257,6 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     setState((prevState) => ({
       ...prevState,
       isRecording: false,
-      // currentRoute is NOT cleared here - it's cleared in discardRecording or saveRoute
     }));
   }, []);
 
@@ -247,7 +264,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     setState((prevState) => ({
       ...prevState,
       isRecording: false,
-      currentRoute: null, // Correctly clear currentRoute on discard
+      currentRoute: null,
     }));
   }, []);
 

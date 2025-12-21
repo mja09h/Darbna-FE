@@ -16,6 +16,8 @@ import PinCreationModal from "./PinCreationModal";
 import { CreatePinData, IPinnedPlace } from "../types/map";
 import { Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { ILocation } from "../types/map";
+import MapLayerSwitcher from "./MapLayerSwitcher";
 
 interface InteractiveMapProps {
   userLocation: Location.LocationObject | null;
@@ -43,6 +45,9 @@ const InteractiveMap = ({
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [mapType, setMapType] = useState<
+    "standard" | "satellite" | "terrain" | "hybrid"
+  >("standard");
   const mapRef = useRef<MapView>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(
@@ -114,19 +119,28 @@ const InteractiveMap = ({
     }
   }, [userLocation?.coords.heading]);
 
-  useEffect(() => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: userLocation.coords.latitude,
-          longitude: userLocation.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        1000
-      );
-    }
-  }, [userLocation?.coords.latitude, userLocation?.coords.longitude]);
+  // FIX: REMOVED the useEffect that was causing auto-zoom
+  // The old code was:
+  // useEffect(() => {
+  //   if (userLocation && mapRef.current) {
+  //     mapRef.current.animateToRegion(
+  //       {
+  //         latitude: userLocation.coords.latitude,
+  //         longitude: userLocation.coords.longitude,
+  //         latitudeDelta: 0.01,  // ← This caused the zoom-in
+  //         longitudeDelta: 0.01,
+  //       },
+  //       1000
+  //     );
+  //   }
+  // }, [userLocation?.coords.latitude, userLocation?.coords.longitude]);
+  //
+  // Why it was removed:
+  // - Every time user location updates, it triggered animateToRegion
+  // - The latitudeDelta/longitudeDelta of 0.01 are very small (highly zoomed)
+  // - This caused the map to zoom in automatically every few seconds
+  // - The initialRegion already handles the initial zoom level
+  // - showsUserLocation={true} already shows the user location without zooming
 
   const centerOnUserLocation = () => {
     if (userLocation && mapRef.current) {
@@ -134,8 +148,8 @@ const InteractiveMap = ({
         {
           latitude: userLocation.coords.latitude,
           longitude: userLocation.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
         },
         1000
       );
@@ -153,8 +167,8 @@ const InteractiveMap = ({
       return {
         latitude: userLocation.coords.latitude,
         longitude: userLocation.coords.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
       };
     }
     return {
@@ -171,6 +185,7 @@ const InteractiveMap = ({
         ref={mapRef}
         provider={PROVIDER_DEFAULT}
         style={styles.map}
+        mapType={mapType === "standard" ? "standard" : mapType}
         initialRegion={getInitialRegion()}
         showsUserLocation={true}
         showsMyLocationButton={false}
@@ -180,18 +195,9 @@ const InteractiveMap = ({
           setShowPinModal(true);
         }}
       >
-        <UrlTile urlTemplate={osmTileUrl} />
-
-        {userLocation && (
-          <Marker
-            coordinate={{
-              latitude: userLocation.coords.latitude,
-              longitude: userLocation.coords.longitude,
-            }}
-            title="My Location"
-            pinColor="#4285F4"
-            tracksViewChanges={false}
-          />
+        {/* Render custom OSM tiles for standard map */}
+        {mapType === "standard" && (
+          <UrlTile key="standard-tiles" urlTemplate={osmTileUrl} />
         )}
 
         {locations.map((loc) => (
@@ -279,6 +285,9 @@ const InteractiveMap = ({
           </Text>
         </View>
       )}
+
+      {/* Map Layer Switcher */}
+      <MapLayerSwitcher currentMapType={mapType} onMapTypeChange={setMapType} />
 
       {userLocation && (
         <TouchableOpacity

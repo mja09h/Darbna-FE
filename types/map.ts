@@ -1,5 +1,10 @@
 export interface ILocation {
   _id: string;
+  name: string;
+  description: string;
+  images: string[];
+  category: string;
+  isPublic: boolean;
   userId: string;
   location: {
     type: "Point";
