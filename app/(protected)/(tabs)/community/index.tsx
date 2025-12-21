@@ -5,9 +5,9 @@ import {
   FlatList,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -17,6 +17,7 @@ import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import RouteDetailModal from "../../../../components/RouteDetailModal";
+import COLORS from "../../../../data/colors";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -190,50 +191,32 @@ const CommunityPage = () => {
     return (
       <TouchableOpacity
         style={styles.routeItemContainer}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
         onPress={() => handleRoutePress(item)}
       >
-        <View
-          style={[
-            styles.routeCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
+        <View style={styles.routeCard}>
           {/* Route Icon */}
-          <View
-            style={[
-              styles.iconContainer,
-              {
-                backgroundColor: colors.primaryLight,
-                borderColor: colors.primary,
-              },
-            ]}
-          >
+          <View style={styles.iconContainer}>
             <Ionicons
               name={getRouteIcon(item.routeType) as any}
-              size={26}
-              color={colors.primary}
+              size={28}
+              color={COLORS.white}
             />
           </View>
 
           {/* Route Info */}
           <View style={styles.infoContainer}>
-            <Text
-              style={[styles.routeName, { color: colors.text }]}
-              numberOfLines={1}
-            >
+            <Text style={styles.routeName} numberOfLines={1}>
               {item.name}
             </Text>
             <View style={styles.metadataRow}>
               <View style={styles.metadataItem}>
                 <Ionicons
-                  name="navigate-outline"
+                  name="resize-outline"
                   size={14}
-                  color={colors.textSecondary}
+                  color={COLORS.lightText}
                 />
-                <Text
-                  style={[styles.metadata, { color: colors.textSecondary }]}
-                >
+                <Text style={styles.metadataText}>
                   {formatDistance(item.distance)}
                 </Text>
               </View>
@@ -241,29 +224,22 @@ const CommunityPage = () => {
                 <Ionicons
                   name="calendar-outline"
                   size={14}
-                  color={colors.textSecondary}
+                  color={COLORS.lightText}
                 />
-                <Text
-                  style={[styles.metadata, { color: colors.textSecondary }]}
-                >
+                <Text style={styles.metadataText}>
                   {formatDate(item.createdAt)}
                 </Text>
               </View>
             </View>
             {/* User Badge */}
             {item.user && (
-              <View
-                style={[
-                  styles.userBadge,
-                  { backgroundColor: colors.primaryLight },
-                ]}
-              >
+              <View style={styles.userBadge}>
                 <Ionicons
-                  name="person-circle"
+                  name="person-outline"
                   size={12}
-                  color={colors.primary}
+                  color={COLORS.desertOrange}
                 />
-                <Text style={[styles.username, { color: colors.primary }]}>
+                <Text style={styles.username}>
                   {item.user.username || "Unknown User"}
                 </Text>
               </View>
@@ -275,7 +251,7 @@ const CommunityPage = () => {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={colors.textSecondary}
+              color={COLORS.lightText}
             />
           </View>
         </View>
@@ -285,28 +261,21 @@ const CommunityPage = () => {
 
   if (loading && routes.length === 0) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}
-      >
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Community Routes</Text>
         </View>
-        <View
-          style={[
-            styles.loadingContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.desertOrange} />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}
-    >
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Community Routes</Text>
         <Text style={styles.headerSubtitle}>
@@ -315,29 +284,17 @@ const CommunityPage = () => {
       </View>
 
       {routes.length === 0 ? (
-        <View
-          style={[
-            styles.emptyContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View
-            style={[
-              styles.emptyIconContainer,
-              { backgroundColor: colors.surface },
-            ]}
-          >
-            <Ionicons name="globe-outline" size={80} color={colors.primary} />
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="globe-outline" size={80} color={COLORS.lightText} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            No Public Routes Yet
-          </Text>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          <Text style={styles.emptyTitle}>No Public Routes Yet</Text>
+          <Text style={styles.emptySubtitle}>
             Be the first to share a route with the community
           </Text>
         </View>
       ) : (
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={styles.listWrapper}>
           <FlatList
             data={routes}
             renderItem={renderRouteCard}
@@ -348,7 +305,7 @@ const CommunityPage = () => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor={colors.primary}
+                tintColor={COLORS.desertOrange}
               />
             }
             onEndReachedThreshold={0.5}
@@ -357,7 +314,7 @@ const CommunityPage = () => {
               loading ? (
                 <ActivityIndicator
                   size="small"
-                  color={colors.primary}
+                  color={COLORS.desertOrange}
                   style={styles.footerLoader}
                 />
               ) : null
@@ -371,75 +328,94 @@ const CommunityPage = () => {
         onClose={handleCloseRouteModal}
         route={selectedRoute}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.offWhiteDesert,
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 15,
     paddingTop: 60,
+    paddingBottom: 20,
     alignItems: "center",
+    backgroundColor: HEADER_BG_COLOR,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "700",
-    color: "#f5e6d3",
+    fontWeight: "800",
+    color: COLORS.white,
     letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 14,
     color: "#a89080",
-    marginTop: 4,
+    marginTop: 6,
+    fontWeight: "500",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: COLORS.offWhiteDesert,
+  },
+  listWrapper: {
+    flex: 1,
+    backgroundColor: COLORS.offWhiteDesert,
   },
   listContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32,
   },
-
-  // Route Item Styles (matching saved page)
   routeItemContainer: {
     marginBottom: 16,
   },
   routeCard: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderColor: COLORS.sandBeige,
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
   },
   iconContainer: {
-    marginRight: 16,
     width: 56,
     height: 56,
     borderRadius: 28,
+    backgroundColor: COLORS.desertOrange,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
+    marginRight: 16,
+    elevation: 2,
+    shadowColor: COLORS.desertOrange,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   infoContainer: {
     flex: 1,
   },
   routeName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
+    color: COLORS.darkSandBrown,
     marginBottom: 8,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   metadataRow: {
     flexDirection: "row",
@@ -452,55 +428,60 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  metadata: {
-    fontSize: 13,
+  metadataText: {
+    fontSize: 14,
+    color: COLORS.lightText,
     fontWeight: "500",
   },
   userBadge: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    gap: 4,
+    backgroundColor: COLORS.offWhiteDesert,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.sandBeige,
     marginTop: 4,
   },
   username: {
     fontSize: 12,
     fontWeight: "600",
+    color: COLORS.desertOrange,
   },
   chevronContainer: {
     marginLeft: 8,
+    padding: 4,
   },
-
-  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: 32,
   },
   emptyIconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
+    backgroundColor: COLORS.sandBeige,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
-    opacity: 0.6,
   },
   emptyTitle: {
     fontSize: 22,
     fontWeight: "700",
-    marginTop: 8,
+    color: COLORS.darkSandBrown,
+    marginBottom: 8,
     textAlign: "center",
   },
-  emptyText: {
-    fontSize: 15,
-    marginTop: 8,
+  emptySubtitle: {
+    fontSize: 16,
+    color: COLORS.lightText,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 24,
   },
   footerLoader: {
     marginVertical: 20,

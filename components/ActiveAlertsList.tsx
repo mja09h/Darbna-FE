@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Linking,
   RefreshControl,
 } from "react-native";
@@ -16,6 +15,7 @@ import { ISOSAlert } from "../types/sos";
 import socket from "../api/socket";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAlert } from "../context/AlertContext";
 import { formatDistanceToNow } from "date-fns";
 
 const formatDistance = (m: number) =>
@@ -24,6 +24,7 @@ const formatDistance = (m: number) =>
 const ActiveAlertsList = () => {
   const { user } = useAuth();
   const { colors, isDark } = useTheme();
+  const { alert } = useAlert();
   const [alerts, setAlerts] = useState<ISOSAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,19 +74,19 @@ const ActiveAlertsList = () => {
     };
   }, [fetchAlerts]);
 
-  const handleHelpPress = async (alert: ISOSAlert) => {
-    const isHelping = (alert.helpers || []).includes(user!._id);
+  const handleHelpPress = async (alertItem: ISOSAlert) => {
+    const isHelping = (alertItem.helpers || []).includes(user!._id);
     if (isHelping) {
-      Alert.alert("Cancel Help", "Are you sure?", [
+      alert("Cancel Help", "Are you sure?", [
         { text: "No" },
         {
           text: "Yes",
           onPress: async () => {
             try {
-              await cancelHelp(alert._id);
+              await cancelHelp(alertItem._id);
               setAlerts((p) =>
                 p.map((a) =>
-                  a._id === alert._id
+                  a._id === alertItem._id
                     ? {
                         ...a,
                         helpers: (a.helpers || []).filter(
@@ -96,28 +97,28 @@ const ActiveAlertsList = () => {
                 )
               );
             } catch (error) {
-              Alert.alert("Error", "Failed to cancel help");
+              alert("Error", "Failed to cancel help");
               console.error("Error canceling help:", error);
             }
           },
         },
       ]);
     } else {
-      Alert.alert("Offer Help", `Help ${alert.user.username}?`, [
+      alert("Offer Help", `Help ${alertItem.user.username}?`, [
         { text: "Cancel" },
         {
           text: "Yes",
           onPress: async () => {
             try {
-              const { phoneNumber } = await offerHelp(alert._id);
+              const { phoneNumber } = await offerHelp(alertItem._id);
               setAlerts((p) =>
                 p.map((a) =>
-                  a._id === alert._id
+                  a._id === alertItem._id
                     ? { ...a, helpers: [...(a.helpers || []), user!._id] }
                     : a
                 )
               );
-              Alert.alert("Help Offered!", `Contact at: ${phoneNumber}`, [
+              alert("Help Offered!", `Contact at: ${phoneNumber}`, [
                 { text: "OK" },
                 {
                   text: "Call Now",
@@ -125,7 +126,7 @@ const ActiveAlertsList = () => {
                 },
               ]);
             } catch (error) {
-              Alert.alert("Error", "Failed to offer help");
+              alert("Error", "Failed to offer help");
               console.error("Error offering help:", error);
             }
           },

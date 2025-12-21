@@ -9,12 +9,12 @@ import {
   ScrollView,
   Image,
   Switch,
-  Alert,
   ActivityIndicator,
   FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useAlert } from "../context/AlertContext";
 import { CreatePinData } from "../types/map";
 
 // Pin categories from backend
@@ -74,6 +74,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
   onClose,
   onCreate,
 }) => {
+  const { alert } = useAlert();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -87,7 +88,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
   const pickImage = async () => {
     // Check if we've reached the max
     if (images.length >= MAX_IMAGES) {
-      Alert.alert(
+      alert(
         "Maximum Images",
         `You can only add up to ${MAX_IMAGES} images per pin.`
       );
@@ -97,7 +98,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
     // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
+      alert(
         "Permission Required",
         "Sorry, we need camera roll permissions to add images!"
       );
@@ -125,7 +126,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
       if (newImages.length > 0) {
         setImages([...images, ...newImages]);
       } else {
-        Alert.alert("Error", "No valid images were selected");
+        alert("Error", "No valid images were selected");
       }
     }
   };
@@ -136,15 +137,15 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      Alert.alert("Error", "Please enter a title");
+      alert("Error", "Please enter a title");
       return;
     }
     if (!category) {
-      Alert.alert("Error", "Please select a category");
+      alert("Error", "Please select a category");
       return;
     }
     if (!location) {
-      Alert.alert("Error", "Location is required");
+      alert("Error", "Location is required");
       return;
     }
 
@@ -173,9 +174,9 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
       setIsPublic(true);
       setImages([]);
       onClose();
-      Alert.alert("Success", "Pin created successfully!");
+      alert("Success", "Pin created successfully!");
     } catch (error: any) {
-      Alert.alert(
+      alert(
         "Error",
         error.response?.data?.message ||
           "Failed to create pin. Please try again."

@@ -4,7 +4,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  Alert,
   SafeAreaView,
   Image,
 } from "react-native";
@@ -13,6 +12,7 @@ import * as Location from "expo-location";
 import { useNavigation, useRouter } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
 import { useSettings } from "../../../../context/SettingsContext";
+import { useAlert } from "../../../../context/AlertContext";
 import { IGPSPoint } from "../../../../types/route";
 import InteractiveMap from "../../../../components/InteractiveMap";
 import SOSModal from "../../../../components/SOSModal";
@@ -34,6 +34,7 @@ const HomePage = () => {
     discardRecording, // Import discardRecording
   } = useRouteRecording();
   const { units } = useSettings();
+  const { alert } = useAlert();
 
   const navigation = useNavigation();
   const [screenshotUri, setScreenshotUri] = useState<string | undefined>(
@@ -147,31 +148,27 @@ const HomePage = () => {
   }, [isRecording, currentRoute?.startTime]);
 
   const handleStartRecording = () => {
-    Alert.alert(
-      "Start Recording",
-      "Do you want to start recording your route?",
-      [
-        {
-          text: "No",
-          onPress: () => {
-            // Do nothing
-          },
-          style: "cancel",
+    alert("Start Recording", "Do you want to start recording your route?", [
+      {
+        text: "No",
+        onPress: () => {
+          // Do nothing
         },
-        {
-          text: "Yes",
-          onPress: () => {
-            startRecording();
-            setRecordingTime(0);
-          },
+        style: "cancel",
+      },
+      {
+        text: "Yes",
+        onPress: () => {
+          startRecording();
+          setRecordingTime(0);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleStopRecording = async () => {
     await stopRecording(); // Pause the recording first
-    Alert.alert("Stop Recording", "Do you want to save this route?", [
+    alert("Stop Recording", "Do you want to save this route?", [
       {
         text: "Discard",
         onPress: async () => {
@@ -199,7 +196,7 @@ const HomePage = () => {
   ) => {
     try {
       await saveRoute(name, description, isPublic, routeType, screenshotUri);
-      Alert.alert("Success", "Route saved successfully!");
+      alert("Success", "Route saved successfully!");
       setShowSaveModal(false);
       setRecordingTime(0);
       setScreenshotUri(undefined);
@@ -222,7 +219,7 @@ const HomePage = () => {
         error?.code === "ERR_NETWORK" ||
         error?.message?.includes("Network Error")
       ) {
-        Alert.alert(
+        alert(
           "Backend Server Not Available",
           "The backend server is not running or not reachable.\n\n" +
             "To fix this:\n" +
@@ -232,7 +229,7 @@ const HomePage = () => {
             "Note: The route data is still saved locally and can be synced when the server is available."
         );
       } else {
-        Alert.alert("Error", "Failed to save route. Please try again.");
+        alert("Error", "Failed to save route. Please try again.");
       }
       if (
         __DEV__ &&

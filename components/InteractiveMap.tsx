@@ -14,10 +14,10 @@ import { IGPSPoint } from "../types/route";
 import { BASE_URL } from "../api/index";
 import PinCreationModal from "./PinCreationModal";
 import { CreatePinData, IPinnedPlace } from "../types/map";
-import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { ILocation } from "../types/map";
 import MapLayerSwitcher from "./MapLayerSwitcher";
+import { useAlert } from "../context/AlertContext";
 
 interface InteractiveMapProps {
   userLocation: Location.LocationObject | null;
@@ -37,6 +37,7 @@ const InteractiveMap = ({
 }: InteractiveMapProps) => {
   const { locations, routes, pois, pinnedPlaces, createPin } = useMap();
   const { user } = useAuth();
+  const { alert } = useAlert();
   const router = useRouter();
   const [showRoutes, setShowRoutes] = useState(true);
   const [showPois, setShowPois] = useState(true);
@@ -63,7 +64,7 @@ const InteractiveMap = ({
 
   const handleCreatePin = async (pinData: CreatePinData) => {
     if (!user?._id) {
-      Alert.alert("Error", "Please log in to create pins");
+      alert("Error", "Please log in to create pins");
       return;
     }
     await createPin({ ...pinData, userId: user._id });

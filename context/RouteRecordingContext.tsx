@@ -16,8 +16,8 @@ import {
   getUserRoutes,
   deleteRoute as deleteRouteAPI,
 } from "../api/routes";
-import { Alert } from "react-native";
 import api from "../api";
+import { globalAlert } from "./AlertContext";
 
 const RouteRecordingContext = createContext<IRouteRecordingContext | undefined>(
   undefined
@@ -145,12 +145,12 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
     ): Promise<IRecordedRoute> => {
       try {
         if (!routeName || !routeName.trim()) {
-          Alert.alert("Error", "Route name is required");
+          globalAlert("Error", "Route name is required");
           throw new Error("Route name is required.");
         }
 
         if (!state.currentRoute || state.currentRoute.points.length < 10) {
-          Alert.alert(
+          globalAlert(
             "Route Too Short",
             `Your route must have at least 10 GPS points. Currently you have ${
               state.currentRoute?.points.length || 0
@@ -162,7 +162,7 @@ export const RouteRecordingProvider: React.FC<{ children: ReactNode }> = ({
         if (state.currentRoute.duration < 60) {
           const minutes = Math.floor(state.currentRoute.duration / 60);
           const seconds = state.currentRoute.duration % 60;
-          Alert.alert(
+          globalAlert(
             "Route Too Short",
             `Your route must be at least 1 minute long. Currently your route is ${minutes}m ${seconds}s. Please record for a longer duration.`
           );

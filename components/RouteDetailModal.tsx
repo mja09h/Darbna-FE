@@ -10,7 +10,6 @@ import {
   Dimensions,
   SafeAreaView,
   TextInput,
-  Alert,
   ActivityIndicator,
   Switch,
   Linking,
@@ -20,6 +19,7 @@ import { ISavedRoute } from "../context/SavedRoutesContext";
 import { useSettings } from "../context/SettingsContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { useAlert } from "../context/AlertContext";
 import api from "../api/index";
 import { useLanguage } from "../context/LanguageContext";
 import InteractiveMap from "./InteractiveMap";
@@ -138,7 +138,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
 
   const handleSaveEdit = async () => {
     if (!editedName.trim()) {
-      Alert.alert("Error", "Route name cannot be empty");
+      alert("Error", "Route name cannot be empty");
       return;
     }
 
@@ -153,18 +153,18 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         location: editedLocation,
       });
 
-      Alert.alert("Success", "Route updated successfully");
+      alert("Success", "Route updated successfully");
       setIsEditMode(false);
       onRouteUpdated?.();
     } catch (error) {
-      Alert.alert("Error", "Failed to update route");
+      alert("Error", "Failed to update route");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = () => {
-    Alert.alert("Delete Route", "Are you sure you want to delete this route?", [
+    alert("Delete Route", "Are you sure you want to delete this route?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -192,7 +192,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
       console.log("Start point:", startPoint);
 
       if (!startPoint || !startPoint.latitude || !startPoint.longitude) {
-        Alert.alert("Error", "Start point not available for this route");
+        alert("Error", "Start point not available for this route");
         return;
       }
 
@@ -209,11 +209,11 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         try {
           await Linking.openURL(appleMapsUrl);
         } catch (appleMapsError) {
-          Alert.alert("Error", "No maps application available on your device");
+          alert("Error", "No maps application available on your device");
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to open directions");
+      alert("Error", "Failed to open directions");
     }
   };
 

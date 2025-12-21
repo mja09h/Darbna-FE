@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSavedRoutes } from "../../context/SavedRoutesContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useSettings } from "../../context/SettingsContext";
+import { useAlert } from "../../context/AlertContext";
 import { ISavedRoute } from "../../context/SavedRoutesContext";
 
 interface RouteItemProps {
@@ -14,6 +15,7 @@ const RouteItem: React.FC<RouteItemProps> = ({ route }) => {
   const { deleteSavedRoute, toggleFavorite } = useSavedRoutes();
   const { colors } = useTheme();
   const { units } = useSettings();
+  const { alert } = useAlert();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDistance = (km: number): string => {
@@ -36,34 +38,30 @@ const RouteItem: React.FC<RouteItemProps> = ({ route }) => {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      "Delete Route",
-      "Are you sure you want to delete this saved route?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await deleteSavedRoute(route._id);
-            } catch (error) {
-              Alert.alert("Error", "Failed to delete route");
-            } finally {
-              setIsDeleting(false);
-            }
-          },
+    alert("Delete Route", "Are you sure you want to delete this saved route?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          setIsDeleting(true);
+          try {
+            await deleteSavedRoute(route._id);
+          } catch (error) {
+            alert("Error", "Failed to delete route");
+          } finally {
+            setIsDeleting(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleToggleFavorite = async () => {
     try {
       await toggleFavorite(route._id);
     } catch (error) {
-      Alert.alert("Error", "Failed to toggle favorite");
+      alert("Error", "Failed to toggle favorite");
     }
   };
 
