@@ -1,8 +1,8 @@
 // api/notifications.ts
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import { Alert } from "react-native";
 import api from "./index";
+import { globalAlert } from "../context/AlertContext";
 
 export async function registerForPushNotificationsAsync(): Promise<
   string | null
@@ -15,7 +15,7 @@ export async function registerForPushNotificationsAsync(): Promise<
     finalStatus = status;
   }
   if (finalStatus !== "granted") {
-    Alert.alert(
+    globalAlert(
       "Permission Required",
       "Push notifications are needed for emergency alerts."
     );

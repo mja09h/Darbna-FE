@@ -6,13 +6,13 @@ import {
   Text,
   TextInput,
   Modal,
-  Alert,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
+import { useAlert } from "../context/AlertContext";
 
 interface RouteNameModalProps {
   visible: boolean;
@@ -30,6 +30,7 @@ const RouteNameModal: React.FC<RouteNameModalProps> = ({
   duration,
 }) => {
   const { colors } = useTheme();
+  const { alert } = useAlert();
   const [routeName, setRouteName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -42,12 +43,12 @@ const RouteNameModal: React.FC<RouteNameModalProps> = ({
 
   const handleConfirm = () => {
     if (!routeName.trim()) {
-      Alert.alert("Error", "Please enter a route name");
+      alert("Error", "Please enter a route name");
       return;
     }
 
     if (routeName.trim().length > 50) {
-      Alert.alert("Error", "Route name must not exceed 50 characters");
+      alert("Error", "Route name must not exceed 50 characters");
       return;
     }
 
@@ -56,7 +57,7 @@ const RouteNameModal: React.FC<RouteNameModalProps> = ({
       onConfirm(routeName.trim());
       setRouteName("");
     } catch (error) {
-      Alert.alert("Error", "Failed to confirm route name");
+      alert("Error", "Failed to confirm route name");
     } finally {
       setIsLoading(false);
     }

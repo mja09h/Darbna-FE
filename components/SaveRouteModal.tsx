@@ -8,13 +8,13 @@ import {
   Modal,
   ScrollView,
   Image,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSettings } from "../context/SettingsContext";
+import { useAlert } from "../context/AlertContext";
 
 const ROUTE_TYPES = ["Running", "Cycling", "Walking", "Hiking", "Other"];
 
@@ -43,6 +43,7 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
   const { units } = useSettings();
+  const { alert } = useAlert();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -85,12 +86,12 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert(t.common.error, "Route name is required");
+      alert(t.common.error, "Route name is required");
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert(
+      alert(
         t.common.error,
         t.savedRoutes.description + " " + t.auth.nameRequired
       );
@@ -98,12 +99,12 @@ const SaveRouteModal: React.FC<SaveRouteModalProps> = ({
     }
 
     if (description.length > 250) {
-      Alert.alert(t.common.error, "Description must not exceed 250 characters");
+      alert(t.common.error, "Description must not exceed 250 characters");
       return;
     }
 
     if (!routeType) {
-      Alert.alert(t.common.error, "Please select a route type");
+      alert(t.common.error, "Please select a route type");
       return;
     }
 

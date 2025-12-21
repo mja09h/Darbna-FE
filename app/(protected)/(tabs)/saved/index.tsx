@@ -7,10 +7,10 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   Modal,
   TextInput,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -19,8 +19,10 @@ import { useLanguage } from "../../../../context/LanguageContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import { useSavedRoutes } from "../../../../context/SavedRoutesContext";
 import { useAuth } from "../../../../context/AuthContext";
+import { useAlert } from "../../../../context/AlertContext";
 import RouteDetailModal from "../../../../components/RouteDetailModal";
 import api from "../../../../api/index";
+import COLORS from "../../../../data/colors";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -67,6 +69,7 @@ const SavedRoutesScreen = () => {
   const { t, isRTL } = useLanguage();
   const { units } = useSettings();
   const { user } = useAuth();
+  const { alert } = useAlert();
   const {
     savedRoutes: contextSavedRoutes,
     folders,
@@ -151,9 +154,9 @@ const SavedRoutesScreen = () => {
       try {
         await api.delete(`/routes/${actualId}`);
         await handleRefresh();
-        Alert.alert(t.savedRoutes.title, t.savedRoutes.deleteSuccess);
+        alert(t.savedRoutes.title, t.savedRoutes.deleteSuccess);
       } catch (error) {
-        Alert.alert(t.savedRoutes.title, t.savedRoutes.deleteFailed);
+        alert(t.savedRoutes.title, t.savedRoutes.deleteFailed);
       }
     } else {
       // It's a saved route from context
@@ -222,72 +225,88 @@ const SavedRoutesScreen = () => {
     return (
       <TouchableOpacity
         style={styles.routeItemContainer}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
         onPress={() => handleRoutePress(item)}
       >
-        <View
-          style={[
-            styles.routeCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
+        <View style={styles.routeCard}>
           {/* Route Icon */}
-          <View
-            style={[
-              styles.iconContainer,
-              {
-                backgroundColor: colors.primaryLight,
-                borderColor: colors.primary,
-              },
-            ]}
-          >
+          <View style={styles.iconContainer}>
             <Ionicons
               name={getRouteIcon(item.routeId?.routeType) as any}
-              size={26}
-              color={colors.primary}
+              size={28}
+              color={COLORS.white}
             />
           </View>
 
           {/* Route Info */}
           <View style={styles.infoContainer}>
-            <Text
-              style={[styles.routeName, { color: colors.text }]}
-              numberOfLines={1}
-            >
+            <Text style={styles.routeName} numberOfLines={1}>
               {item.routeId?.name}
             </Text>
-            <Text style={[styles.metadata, { color: colors.textSecondary }]}>
-              {formatDistance(item.routeId?.distance)} •{" "}
-              {formatDate(item.savedAt)}
-            </Text>
+            <View style={styles.metadataRow}>
+              <View style={styles.metadataItem}>
+                <Ionicons
+                  name="resize-outline"
+                  size={14}
+                  color={COLORS.lightText}
+                />
+                <Text style={styles.metadataText}>
+                  {formatDistance(item.routeId?.distance)}
+                </Text>
+              </View>
+              <View style={styles.metadataItem}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={14}
+                  color={COLORS.lightText}
+                />
+                <Text style={styles.metadataText}>
+                  {formatDate(item.savedAt)}
+                </Text>
+              </View>
+            </View>
             {folderName && (
-              <Text style={[styles.folder, { color: colors.primary }]}>
-                {folderName}
-              </Text>
+              <View style={styles.folderBadge}>
+                <Ionicons
+                  name="folder-outline"
+                  size={12}
+                  color={COLORS.desertOrange}
+                />
+                <Text style={styles.folderText}>{folderName}</Text>
+              </View>
             )}
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actionContainer}>
             <TouchableOpacity
-              onPress={() => handleFavoriteToggle(item._id)}
-              style={styles.actionButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleFavoriteToggle(item._id);
+              }}
+              style={[
+                styles.actionButton,
+                item.isFavorite && styles.actionButtonActive,
+              ]}
             >
               <Ionicons
                 name={item.isFavorite ? "heart" : "heart-outline"}
                 size={20}
-                color={item.isFavorite ? colors.primary : colors.textSecondary}
+                color={item.isFavorite ? COLORS.white : COLORS.lightText}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => handleRouteDeleted(item._id)}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleRouteDeleted(item._id);
+              }}
               style={styles.actionButton}
             >
               <Ionicons
                 name="trash-outline"
                 size={20}
-                color={colors.textSecondary}
+                color={COLORS.lightText}
               />
             </TouchableOpacity>
           </View>
@@ -298,26 +317,30 @@ const SavedRoutesScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-      </SafeAreaView>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.desertOrange} />
+        </View>
+      </View>
     );
   }
 
   return (
     <>
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: HEADER_BG_COLOR }]}>
+        <View style={styles.header}>
           <Text style={styles.headerTitle}>
             {t.savedRoutes?.title || "Saved Routes"}
           </Text>
-          <TouchableOpacity onPress={() => setShowSearchModal(true)}>
-            <Ionicons name="search" size={24} color="#fff" />
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => setShowSearchModal(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="search" size={24} color={COLORS.white} />
           </TouchableOpacity>
         </View>
 
@@ -331,24 +354,25 @@ const SavedRoutesScreen = () => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor={colors.primary}
+                tintColor={COLORS.desertOrange}
               />
             }
             contentContainerStyle={styles.listContent}
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <Ionicons
-              name="map-outline"
-              size={64}
-              color={colors.textSecondary}
-            />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="map-outline" size={80} color={COLORS.lightText} />
+            </View>
+            <Text style={styles.emptyTitle}>
               {t.savedRoutes?.noRoutes || "No routes yet"}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              Start recording routes to see them here
             </Text>
           </View>
         )}
-      </SafeAreaView>
+      </View>
 
       {/* Route Detail Modal */}
       {selectedRoute && (
@@ -367,73 +391,168 @@ const SavedRoutesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.offWhiteDesert,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.offWhiteDesert,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: HEADER_BG_COLOR,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
+    fontSize: 28,
+    fontWeight: "800",
+    color: COLORS.white,
+    letterSpacing: 0.5,
+  },
+  searchButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
   },
   listContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32,
   },
   routeItemContainer: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   routeCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.sandBeige,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   iconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.desertOrange,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
-    borderWidth: 2,
+    marginRight: 16,
+    elevation: 2,
+    shadowColor: COLORS.desertOrange,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   infoContainer: {
     flex: 1,
   },
   routeName: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.darkSandBrown,
+    marginBottom: 8,
+    letterSpacing: 0.2,
   },
-  metadata: {
-    fontSize: 13,
-    marginBottom: 4,
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 16,
   },
-  folder: {
-    fontSize: 12,
+  metadataItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  metadataText: {
+    fontSize: 14,
+    color: COLORS.lightText,
     fontWeight: "500",
+  },
+  folderBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.offWhiteDesert,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.sandBeige,
+  },
+  folderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.desertOrange,
   },
   actionContainer: {
     flexDirection: "row",
-    gap: 8,
+    gap: 4,
   },
   actionButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.offWhiteDesert,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.sandBeige,
+  },
+  actionButtonActive: {
+    backgroundColor: COLORS.desertOrange,
+    borderColor: COLORS.desertOrange,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 32,
   },
-  emptyText: {
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.sandBeige,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: COLORS.darkSandBrown,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtitle: {
     fontSize: 16,
-    marginTop: 12,
+    color: COLORS.lightText,
+    textAlign: "center",
+    lineHeight: 24,
   },
 });
 

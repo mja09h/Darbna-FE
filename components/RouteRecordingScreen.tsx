@@ -4,12 +4,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  Alert,
   TextInput,
   Modal,
 } from "react-native";
 import * as Location from "expo-location";
 import { useRouteRecording } from "../context/RouteRecordingContext";
+import { useAlert } from "../context/AlertContext";
 import { IGPSPoint } from "../types/route";
 import InteractiveMap from "./InteractiveMap";
 
@@ -24,6 +24,7 @@ const RouteRecordingScreen = () => {
     addPoint,
     saveRoute,
   } = useRouteRecording();
+  const { alert } = useAlert();
 
   const [routeName, setRouteName] = useState("");
   const [routeDescription, setRouteDescription] = useState("");
@@ -39,7 +40,7 @@ const RouteRecordingScreen = () => {
     const requestLocationPermission = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
+        alert(
           "Permission Denied",
           "Location permission is required for route recording"
         );
@@ -138,7 +139,7 @@ const RouteRecordingScreen = () => {
   };
 
   const handleStopRecording = () => {
-    Alert.alert("Stop Recording", "Do you want to save this route?", [
+    alert("Stop Recording", "Do you want to save this route?", [
       {
         text: "Discard",
         onPress: async () => {
@@ -160,7 +161,7 @@ const RouteRecordingScreen = () => {
 
   const handleSaveRoute = async () => {
     if (!routeName.trim()) {
-      Alert.alert("Error", "Please enter a route name");
+      alert("Error", "Please enter a route name");
       return;
     }
 
@@ -174,19 +175,19 @@ const RouteRecordingScreen = () => {
       setRouteName("");
       setRouteDescription("");
 
-      Alert.alert("Success", "Route saved successfully!");
+      alert("Success", "Route saved successfully!");
     } catch (error: any) {
       // Handle network errors gracefully
       if (
         error?.code === "ERR_NETWORK" ||
         error?.message?.includes("Network Error")
       ) {
-        Alert.alert(
+        alert(
           "Connection Error",
           "Unable to connect to server. Please check your connection and try again."
         );
       } else {
-        Alert.alert("Error", "Failed to save route. Please try again.");
+        alert("Error", "Failed to save route. Please try again.");
       }
       // Don't log network errors to console
       if (

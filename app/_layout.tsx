@@ -9,7 +9,8 @@ import { ThemeProvider } from "../context/ThemeContext";
 import { SettingsProvider } from "../context/SettingsContext";
 import { MapProvider } from "../context/MapContext";
 import { RouteRecordingProvider } from "../context/RouteRecordingContext";
-import { SavedRoutesProvider } from "../context/SavedRoutesContext"; // ✅ ADDED
+import { SavedRoutesProvider } from "../context/SavedRoutesContext";
+import { AlertProvider } from "../context/AlertContext";
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -69,34 +70,34 @@ const _layout = () => {
     <LanguageProvider>
       <ThemeProvider>
         <SettingsProvider>
-          <AuthProvider>
-            <MapProvider>
-              <RouteRecordingProvider>
-                <SavedRoutesProvider>
-                  {/* ✅ ADDED SavedRoutesProvider */}
-                  <Stack initialRouteName="(onBoarding)">
-                    <Stack.Screen
-                      name="(onBoarding)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="(protected)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="(auth)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="index"
-                      options={{ headerShown: false }}
-                    />
-                  </Stack>
-                </SavedRoutesProvider>
-                {/* ✅ ADDED closing tag */}
-              </RouteRecordingProvider>
-            </MapProvider>
-          </AuthProvider>
+          <AlertProvider>
+            <AuthProvider>
+              <MapProvider>
+                <RouteRecordingProvider>
+                  <SavedRoutesProvider>
+                    <Stack initialRouteName="(onBoarding)">
+                      <Stack.Screen
+                        name="(onBoarding)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="(protected)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="(auth)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="index"
+                        options={{ headerShown: false }}
+                      />
+                    </Stack>
+                  </SavedRoutesProvider>
+                </RouteRecordingProvider>
+              </MapProvider>
+            </AuthProvider>
+          </AlertProvider>
         </SettingsProvider>
       </ThemeProvider>
     </LanguageProvider>

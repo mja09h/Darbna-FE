@@ -1,7 +1,9 @@
 import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import COLORS from "../data/colors";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface MapLayerSwitcherProps {
   currentMapType: "standard" | "satellite" | "terrain" | "hybrid";
@@ -38,19 +40,11 @@ const MapLayerSwitcher: React.FC<MapLayerSwitcherProps> = ({
         >
           <Ionicons
             name={item.icon as any}
-            size={20}
+            size={22}
             color={
               currentMapType === item.type ? COLORS.white : COLORS.darkSandBrown
             }
           />
-          <Text
-            style={[
-              styles.buttonText,
-              currentMapType === item.type && styles.activeButtonText,
-            ]}
-          >
-            {item.label}
-          </Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -60,8 +54,8 @@ const MapLayerSwitcher: React.FC<MapLayerSwitcherProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 16,
-    right: 16,
+    left: 16,
+    top: SCREEN_HEIGHT / 2 - 66, // Center vertically (3 buttons * 44px height / 2)
     backgroundColor: COLORS.offWhiteDesert,
     borderRadius: 12,
     overflow: "hidden",
@@ -73,25 +67,15 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    flexDirection: "row",
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0, 0, 0, 0.1)",
   },
   activeButton: {
     backgroundColor: COLORS.desertOrange,
-  },
-  buttonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.darkSandBrown,
-  },
-  activeButtonText: {
-    color: COLORS.white,
   },
 });
 

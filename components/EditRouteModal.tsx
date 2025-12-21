@@ -8,13 +8,13 @@ import {
   Modal,
   ScrollView,
   Image,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useSettings } from "../context/SettingsContext";
+import { useAlert } from "../context/AlertContext";
 import { IRecordedRoute } from "../types/route";
 
 const ROUTE_TYPES = ["Running", "Cycling", "Walking", "Hiking", "Other"];
@@ -43,6 +43,7 @@ const EditRouteModal: React.FC<EditRouteModalProps> = ({
   const { t, isRTL } = useLanguage();
   const { colors } = useTheme();
   const { units } = useSettings();
+  const { alert } = useAlert();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -88,17 +89,17 @@ const EditRouteModal: React.FC<EditRouteModalProps> = ({
 
     // Validation
     if (!name.trim()) {
-      Alert.alert(t.common.error, "Route name is required");
+      alert(t.common.error, "Route name is required");
       return;
     }
 
     if (description.length > 250) {
-      Alert.alert(t.common.error, "Description must not exceed 250 characters");
+      alert(t.common.error, "Description must not exceed 250 characters");
       return;
     }
 
     if (!routeType) {
-      Alert.alert(t.common.error, "Please select a route type");
+      alert(t.common.error, "Please select a route type");
       return;
     }
 
@@ -111,7 +112,7 @@ const EditRouteModal: React.FC<EditRouteModalProps> = ({
         routeType,
       });
     } catch (error) {
-      Alert.alert(t.common.error, "Failed to update route. Please try again.");
+      alert(t.common.error, "Failed to update route. Please try again.");
     } finally {
       setIsLoading(false);
     }

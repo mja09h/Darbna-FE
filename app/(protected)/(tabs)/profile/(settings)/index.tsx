@@ -4,7 +4,6 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
-  Alert,
   AppState,
   StatusBar,
 } from "react-native";
@@ -15,6 +14,7 @@ import { useLanguage } from "../../../../../context/LanguageContext";
 import { useTheme } from "../../../../../context/ThemeContext";
 import { useSettings } from "../../../../../context/SettingsContext";
 import { useAuth } from "../../../../../context/AuthContext";
+import { useAlert } from "../../../../../context/AlertContext";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
@@ -31,6 +31,7 @@ const SettingsScreen = () => {
   const { theme, setTheme, colors, isDark } = useTheme();
   const { units, setUnits } = useSettings();
   const { logout } = useAuth();
+  const { alert } = useAlert();
   const router = useRouter();
 
   // --- Local State ---
@@ -113,7 +114,7 @@ const SettingsScreen = () => {
       // Permissions will be refreshed when app comes back to foreground
     } catch (error) {
       console.log("Error opening settings:", error);
-      Alert.alert(
+      alert(
         t.common.error,
         "Unable to open device settings. Please open settings manually."
       );
@@ -133,23 +134,19 @@ const SettingsScreen = () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setLocationStatus(status);
       if (status === "denied") {
-        Alert.alert(
-          t.settings.permissionRequired,
-          t.settings.openSettingsMessage,
-          [
-            { text: t.common.cancel, style: "cancel" },
-            {
-              text: t.settings.openSettings,
-              onPress: openAppSettings,
-            },
-          ]
-        );
+        alert(t.settings.permissionRequired, t.settings.openSettingsMessage, [
+          { text: t.common.cancel, style: "cancel" },
+          {
+            text: t.settings.openSettings,
+            onPress: openAppSettings,
+          },
+        ]);
       } else if (status !== "granted") {
-        Alert.alert(t.common.error, t.settings.permissionRequired);
+        alert(t.common.error, t.settings.permissionRequired);
       }
     } catch (error) {
       console.log("Error requesting location permission:", error);
-      Alert.alert(
+      alert(
         t.common.error,
         "Unable to request location permission. Please try again."
       );
@@ -161,23 +158,19 @@ const SettingsScreen = () => {
       const { status } = await Notifications.requestPermissionsAsync();
       setNotificationStatus(status);
       if (status === "denied") {
-        Alert.alert(
-          t.settings.permissionRequired,
-          t.settings.openSettingsMessage,
-          [
-            { text: t.common.cancel, style: "cancel" },
-            {
-              text: t.settings.openSettings,
-              onPress: openAppSettings,
-            },
-          ]
-        );
+        alert(t.settings.permissionRequired, t.settings.openSettingsMessage, [
+          { text: t.common.cancel, style: "cancel" },
+          {
+            text: t.settings.openSettings,
+            onPress: openAppSettings,
+          },
+        ]);
       } else if (status !== "granted") {
-        Alert.alert(t.common.error, t.settings.permissionRequired);
+        alert(t.common.error, t.settings.permissionRequired);
       }
     } catch (error) {
       console.log("Error requesting notification permission:", error);
-      Alert.alert(
+      alert(
         t.common.error,
         "Unable to request notification permission. Please try again."
       );

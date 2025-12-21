@@ -6,7 +6,6 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   TextInput,
   Switch,
@@ -21,6 +20,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useMap } from "../../../../context/MapContext";
 import { useAuth } from "../../../../context/AuthContext";
+import { useAlert } from "../../../../context/AlertContext";
 import { IPinnedPlace, CreatePinData } from "../../../../types/map";
 import { getPinById } from "../../../../api/pins";
 import { BASE_URL } from "../../../../api/index";
@@ -77,6 +77,7 @@ const PinDetailPage = () => {
   const { pinId } = useLocalSearchParams<{ pinId: string }>();
   const { updatePin, deletePin, pinnedPlaces } = useMap();
   const { user } = useAuth();
+  const { alert } = useAlert();
   const [pin, setPin] = useState<IPinnedPlace | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -147,7 +148,7 @@ const PinDetailPage = () => {
         }
       } catch (error) {
         console.error("Error fetching pin:", error);
-        Alert.alert("Error", "Failed to load pin details");
+        alert("Error", "Failed to load pin details");
         router.back();
       } finally {
         setLoading(false);
@@ -161,7 +162,7 @@ const PinDetailPage = () => {
 
   // Handle delete
   const handleDelete = () => {
-    Alert.alert(
+    alert(
       "Delete Pin",
       "Are you sure you want to delete this pin? This action cannot be undone.",
       [
@@ -172,11 +173,11 @@ const PinDetailPage = () => {
           onPress: async () => {
             try {
               await deletePin(pinId);
-              Alert.alert("Success", "Pin deleted successfully");
+              alert("Success", "Pin deleted successfully");
               router.back();
             } catch (error) {
               console.error("Error deleting pin:", error);
-              Alert.alert("Error", "Failed to delete pin");
+              alert("Error", "Failed to delete pin");
             }
           },
         },
@@ -187,7 +188,7 @@ const PinDetailPage = () => {
   // Handle edit save
   const handleSave = async () => {
     if (!title.trim() || !category) {
-      Alert.alert("Error", "Please fill in all required fields");
+      alert("Error", "Please fill in all required fields");
       return;
     }
 
@@ -211,10 +212,10 @@ const PinDetailPage = () => {
       const updatedPin = await updatePin(pinId, updateData);
       setPin(updatedPin);
       setIsEditing(false);
-      Alert.alert("Success", "Pin updated successfully");
+      alert("Success", "Pin updated successfully");
     } catch (error) {
       console.error("Error updating pin:", error);
-      Alert.alert("Error", "Failed to update pin");
+      alert("Error", "Failed to update pin");
     } finally {
       setSaving(false);
     }
@@ -224,7 +225,7 @@ const PinDetailPage = () => {
   const pickImages = async () => {
     // Check if we've reached the max
     if (images.length >= MAX_IMAGES) {
-      Alert.alert(
+      alert(
         "Maximum Images",
         `You can only add up to ${MAX_IMAGES} images per pin.`
       );
@@ -233,7 +234,7 @@ const PinDetailPage = () => {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
+      alert(
         "Permission Required",
         "Sorry, we need camera roll permissions to add images!"
       );
@@ -266,7 +267,7 @@ const PinDetailPage = () => {
   // Open directions in Google Maps
   const openDirections = () => {
     if (!pin || !pin.location || !pin.location.coordinates) {
-      Alert.alert("Error", "Location information is not available");
+      alert("Error", "Location information is not available");
       return;
     }
 
@@ -295,14 +296,14 @@ const PinDetailPage = () => {
           console.error("Error opening maps:", err);
           // Fallback to web URL
           Linking.openURL(webUrl).catch((err) => {
-            Alert.alert("Error", "Could not open maps application");
+            alert("Error", "Could not open maps application");
             console.error("Error opening web maps:", err);
           });
         });
     } else {
       // Fallback to web URL
       Linking.openURL(webUrl).catch((err) => {
-        Alert.alert("Error", "Could not open maps application");
+        alert("Error", "Could not open maps application");
         console.error("Error opening web maps:", err);
       });
     }
