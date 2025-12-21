@@ -26,28 +26,28 @@ interface TeamMember {
 const TEAM_MEMBERS: TeamMember[] = [
   {
     id: "1",
-    name: "Member 1", // Replace with actual name
+    name: "Mohammad Jassim Aljumaah", // Replace with actual name
     image: null, // Replace with require("./path/to/image1.jpg") or image URI
   },
   {
     id: "2",
-    name: "Member 2", // Replace with actual name
+    name: "Yousef Alrajhy", // Replace with actual name
     image: null, // Replace with require("./path/to/image2.jpg") or image URI
   },
   {
     id: "3",
-    name: "Member 3", // Replace with actual name
+    name: "Mohamad AlQalaf", // Replace with actual name
     image: null, // Replace with require("./path/to/image3.jpg") or image URI
   },
   {
     id: "4",
-    name: "Member 4", // Replace with actual name
+    name: "Fahad Saeed", // Replace with actual name
     image: null, // Replace with require("./path/to/image4.jpg") or image URI
   },
   {
     id: "5",
-    name: "Member 5", // Replace with actual name
-    image: null, // Replace with require("./path/to/image5.jpg") or image URI
+    name: "ChatGPT", // Replace with actual name
+    image: require("../../../../../assets/chatGPT.png"), // Replace with require("./path/to/image5.jpg") or image URI
   },
 ];
 
@@ -123,45 +123,32 @@ const AboutScreen = () => {
 
             {/* Team Members Grid */}
             <View style={styles.teamGrid}>
-              {TEAM_MEMBERS.map((member, index) => (
+              {TEAM_MEMBERS.map((member) => (
                 <View key={member.id} style={styles.teamMemberCard}>
-                  <View style={styles.memberImageWrapper}>
-                    <View style={styles.memberImageContainer}>
-                      {member.image ? (
-                        <Image
-                          source={
-                            typeof member.image === "string"
-                              ? { uri: member.image }
-                              : member.image
-                          }
-                          style={styles.memberImage}
-                          resizeMode="cover"
+                  <View style={styles.memberImageContainer}>
+                    {member.image ? (
+                      <Image
+                        source={
+                          typeof member.image === "string"
+                            ? { uri: member.image }
+                            : member.image
+                        }
+                        style={styles.memberImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.memberImagePlaceholder}>
+                        <Ionicons
+                          name="person"
+                          size={50}
+                          color={COLORS.lightText}
                         />
-                      ) : (
-                        <View style={styles.memberImagePlaceholder}>
-                          <Ionicons
-                            name="person"
-                            size={50}
-                            color={COLORS.lightText}
-                          />
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.memberBadge}>
-                      <Text style={styles.memberBadgeText}>{index + 1}</Text>
-                    </View>
+                      </View>
+                    )}
                   </View>
                   <Text style={[styles.memberName, { color: colors.text }]}>
                     {member.name}
                   </Text>
-                  <View style={styles.memberRole}>
-                    <Ionicons
-                      name="code-working"
-                      size={12}
-                      color={COLORS.desertOrange}
-                    />
-                    <Text style={styles.memberRoleText}>Developer</Text>
-                  </View>
                 </View>
               ))}
             </View>
@@ -288,15 +275,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
   },
-  memberImageWrapper: {
-    position: "relative",
-    marginBottom: 16,
-  },
   memberImageContainer: {
     width: 110,
     height: 110,
     borderRadius: 55,
     overflow: "hidden",
+    marginBottom: 16,
     backgroundColor: COLORS.offWhiteDesert,
     borderWidth: 4,
     borderColor: COLORS.desertOrange,
@@ -317,53 +301,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.sandBeige,
   },
-  memberBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.desertOrange,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: COLORS.white,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  memberBadgeText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: COLORS.white,
-  },
   memberName: {
     fontSize: 17,
     fontWeight: "700",
     textAlign: "center",
     color: COLORS.darkSandBrown,
-    marginBottom: 6,
     letterSpacing: 0.2,
-  },
-  memberRole: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: COLORS.offWhiteDesert,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.sandBeige,
-  },
-  memberRoleText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: COLORS.desertOrange,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
 });
