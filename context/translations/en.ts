@@ -21,7 +21,6 @@ export const en = {
     noAccount: "Don't have an account?",
     signUp: "Sign Up",
     or: "or",
-    continueWithApple: "Continue with Apple",
     loggingIn: "Logging in...",
 
     // Register
@@ -177,7 +176,6 @@ export const en = {
     socialStats: "Social Stats",
     savedRoutes: "Saved Routes",
     securityConnections: "Security & Connections",
-    appleAccount: "Apple Account",
     notConnected: "Not Connected",
     connected: "Connected",
     subscription: "Subscription",

@@ -14,12 +14,10 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import Toast, { ToastType } from "../../components/Toast";
 import axios from "axios";
-import { useAppleAuth } from "../../hooks/useAppleAuth";
 
 // --- Components ---
 import AuthInput from "../../components/AuthInput";
 import AuthButton from "../../components/AuthButton";
-import SocialButton from "../../components/SocialButton";
 import CustomAlert from "../../components/CustomAlert";
 
 // --- Types ---
@@ -32,14 +30,13 @@ const Login = () => {
   // --- Hooks ---
   const router = useRouter();
   const { t } = useLanguage();
-  const { login, appleLogin, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
 
   // --- Local State ---
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [oauthLoading, setOauthLoading] = useState<"apple" | null>(null);
 
   // --- Toast State ---
   const [toastVisible, setToastVisible] = useState(false);
@@ -55,29 +52,6 @@ const Login = () => {
     setToastType(type);
     setToastVisible(true);
   };
-
-  // --- OAuth Handlers ---
-
-  // Apple Authentication
-  const { signInWithApple, isAvailable: isAppleAvailable } = useAppleAuth({
-    onSuccess: async (identityToken, user) => {
-      setOauthLoading("apple");
-      try {
-        await appleLogin({
-          identityToken,
-          email: user?.email,
-          fullName: user?.fullName,
-        });
-      } catch (error) {
-        showToast(t.auth.loginFailed, "error");
-      } finally {
-        setOauthLoading(null);
-      }
-    },
-    onError: (error) => {
-      showToast(error, "error");
-    },
-  });
 
   // --- Validation Helpers ---
 
@@ -330,27 +304,6 @@ const Login = () => {
               onPress={handleLogin}
               isLoading={isLoading}
             />
-          </View>
-
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>{t.auth.or}</Text>
-            <View style={styles.divider} />
-          </View>
-
-          {/* Social Login Buttons */}
-          <View style={styles.socialButtonsColumn}>
-            {/* Apple Login */}
-            {Platform.OS === "ios" && isAppleAvailable && (
-              <SocialButton
-                title={t.auth.continueWithApple}
-                iconName="logo-apple"
-                onPress={signInWithApple}
-                isLoading={oauthLoading === "apple"}
-                disabled={isLoading || !!oauthLoading}
-              />
-            )}
           </View>
 
           {/* Sign Up Link */}

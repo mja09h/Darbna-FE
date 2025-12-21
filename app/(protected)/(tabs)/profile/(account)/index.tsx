@@ -202,13 +202,6 @@ const AccountScreen = () => {
                     "/(protected)/(tabs)/profile/(account)/changePassword"
                   )
               )}
-              {renderItem(
-                "logo-apple",
-                t.profile.appleAccount,
-                t.profile.notConnected,
-                () => showAlert("Info", "Apple account linking coming soon"),
-                true
-              )}
             </View>
           )}
 

@@ -38,7 +38,7 @@ const _layout = () => {
     // Handle deep links for password reset
     const handleDeepLink = (event: { url: string }) => {
       const { path, queryParams } = Linking.parse(event.url);
-      
+
       if (path === "reset-password" && queryParams?.token) {
         const token = queryParams.token as string;
         router.push({

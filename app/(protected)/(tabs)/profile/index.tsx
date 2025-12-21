@@ -13,6 +13,7 @@ import { useLanguage } from "../../../../context/LanguageContext";
 import { useTheme } from "../../../../context/ThemeContext";
 import { useAuth } from "../../../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { BASE_URL } from "../../../../api";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -36,28 +37,65 @@ const ProfileScreen = () => {
     });
   };
 
+  // Helper to get full image URL from relative path
+  const getProfileImageUri = (
+    profilePicture: string | undefined
+  ): string | null => {
+    if (!profilePicture) return null;
+
+    // If already a full URL, return as is
+    if (
+      profilePicture.startsWith("http://") ||
+      profilePicture.startsWith("https://")
+    ) {
+      return profilePicture;
+    }
+
+    // If it's a local file URI (from image picker), return as is
+    if (
+      profilePicture.startsWith("file://") ||
+      profilePicture.startsWith("content://")
+    ) {
+      return profilePicture;
+    }
+
+    // Otherwise, construct full URL from backend
+    const baseUrl = BASE_URL.replace("/api", "");
+    return `${baseUrl}${
+      profilePicture.startsWith("/") ? "" : "/"
+    }${profilePicture}`;
+  };
+
+  const profileImageUri = getProfileImageUri(user?.profilePicture);
+
   return (
     <View style={[styles.container, { backgroundColor: HEADER_BG_COLOR }]}>
       <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
 
       {/* Header Section */}
       <View style={styles.header}>
-        {/* Settings Icon - Top Left */}
+        <Text style={styles.headerTitle}>{t.tabs.profile}</Text>
+
+        {/* Settings Icon - Top Right */}
         <TouchableOpacity
           style={styles.settingsIconButton}
           onPress={handleSettingsPress}
+          activeOpacity={0.7}
         >
-          <Ionicons name="settings-outline" size={24} color="#f5e6d3" />
+          <View style={styles.settingsButtonContainer}>
+            <Ionicons name="settings-outline" size={22} color="#ad5410" />
+          </View>
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>{t.tabs.profile}</Text>
 
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            {user?.profilePicture ? (
+            {profileImageUri ? (
               <Image
-                source={{ uri: user.profilePicture }}
+                source={{ uri: profileImageUri }}
                 style={styles.avatar}
+                onError={(error) => {
+                  console.log("Error loading profile image:", error);
+                }}
               />
             ) : (
               <Ionicons name="person" size={48} color="#ad5410" />
@@ -219,9 +257,23 @@ const styles = StyleSheet.create({
   settingsIconButton: {
     position: "absolute",
     top: 60,
-    left: 20,
-    padding: 8,
+    right: 20,
     zIndex: 10,
+  },
+  settingsButtonContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(245, 230, 211, 0.15)", // Light background with transparency
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(173, 84, 16, 0.3)", // Desert orange border with transparency
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
   },
   headerTitle: {
     fontSize: 20,

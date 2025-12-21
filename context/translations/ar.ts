@@ -23,7 +23,6 @@ export const ar: TranslationKeys = {
     noAccount: "ليس لديك حساب؟",
     signUp: "إنشاء حساب",
     or: "أو",
-    continueWithApple: "المتابعة مع أبل",
     loggingIn: "جاري تسجيل الدخول...",
 
     // Register
@@ -178,7 +177,6 @@ export const ar: TranslationKeys = {
     socialStats: "الإحصائيات الاجتماعية",
     savedRoutes: "المسارات المحفوظة",
     securityConnections: "الأمان والاتصالات",
-    appleAccount: "حساب أبل",
     notConnected: "غير متصل",
     connected: "متصل",
     subscription: "الاشتراك",

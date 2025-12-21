@@ -11,8 +11,6 @@ import {
   login as apiLogin,
   register as apiRegister,
   logout as apiLogout,
-  appleAuth as apiAppleAuth,
-  AppleAuthData,
 } from "../api/auth";
 import { getToken, removeToken } from "../api/storage";
 import { getCurrentUser } from "../api/user";
@@ -58,7 +56,6 @@ interface AuthContextType {
   ) => Promise<User>;
   logout: () => Promise<void>;
   updateUserState: (user: User) => void;
-  appleLogin: (data: AppleAuthData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,18 +92,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Skip redirects when authentication is bypassed
     if (BYPASS_AUTH) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
-    const inProtectedGroup = segments[0] === "(protected)";
-    const inOnboardingGroup = segments[0] === "(onBoarding)";
+    const firstSegment = segments[0];
+    const inAuthGroup = firstSegment === "(auth)";
+    const inProtectedGroup = firstSegment === "(protected)";
+    const inOnboardingGroup = firstSegment === "(onBoarding)";
+    const isIndex = !firstSegment || firstSegment === "index";
 
-    if (isAuthenticated && inAuthGroup) {
-      // User is logged in but on auth screen, redirect to protected
-      router.replace("/(protected)/(tabs)/home");
-    } else if (!isAuthenticated && inProtectedGroup) {
-      // User is not logged in but on protected screen, redirect to auth
-      router.replace("/(auth)/login");
+    if (isAuthenticated) {
+      // User is authenticated - redirect away from auth/onboarding/index screens
+      if (inAuthGroup || inOnboardingGroup || isIndex) {
+        router.replace("/(protected)/(tabs)/home");
+      }
+    } else {
+      // User is not authenticated - redirect away from protected screens
+      if (inProtectedGroup) {
+        router.replace("/(auth)/login");
+      }
     }
-  }, [isAuthenticated, segments, isLoading]);
+  }, [isAuthenticated, segments, isLoading, router]);
 
   // Manage socket connection based on authentication status
   useEffect(() => {
@@ -235,26 +238,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const appleLogin = async (data: AppleAuthData) => {
-    setIsLoading(true);
-    try {
-      const response: AuthResponse = await apiAppleAuth(data);
-      setUser(response.user);
-
-      // Register and save push notification token
-      const token = await registerForPushNotificationsAsync();
-      if (token) {
-        await savePushToken(token);
-      }
-
-      router.replace("/(protected)/(tabs)/home");
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const updateUserState = (updatedUser: User) => {
     setUser(updatedUser);
   };
@@ -269,7 +252,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         updateUserState,
-        appleLogin,
       }}
     >
       {children}
