@@ -26,7 +26,7 @@ interface TeamMember {
 const TEAM_MEMBERS: TeamMember[] = [
   {
     id: "1",
-    name: "Mohammad Jassim Aljumaah", // Replace with actual name
+    name: "Mohammad Aljumaah", // Replace with actual name
     image: null, // Replace with require("./path/to/image1.jpg") or image URI
   },
   {

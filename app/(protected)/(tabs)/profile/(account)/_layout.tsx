@@ -11,6 +11,9 @@ const _layout = () => {
       <Stack.Screen name="phone" options={{ headerShown: false }} />
       <Stack.Screen name="subscriptions" options={{ headerShown: false }} />
       <Stack.Screen name="changePassword" options={{ headerShown: false }} />
+      <Stack.Screen name="upgrade" options={{ headerShown: false }} />
+      <Stack.Screen name="paymentInfo" options={{ headerShown: false }} />
+      
     </Stack>
   );
 };

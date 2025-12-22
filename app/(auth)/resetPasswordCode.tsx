@@ -69,7 +69,7 @@ const ResetPasswordCodeScreen = () => {
     if (!password) {
       return t.auth.passwordRequired;
     }
-    if (password.length < 8) {
+    if (password.length < 5) {
       return t.auth.passwordTooShort;
     }
     return undefined;

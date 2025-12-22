@@ -1,3 +1,5 @@
+import { SubscriptionPlan, SubscriptionStatus, CardInfo } from "./subscription";
+
 export interface User {
     _id: string;
     name: string;
@@ -11,6 +13,11 @@ export interface User {
     followers: string[];
     following: string[];
     isVerified?: boolean;
+    subscriptionPlan?: SubscriptionPlan;
+    subscriptionStatus?: SubscriptionStatus;
+    cardInfo?: CardInfo;
+    subscriptionStartDate?: string;
+    subscriptionEndDate?: string;
     createdAt: string;
     updatedAt: string;
 }

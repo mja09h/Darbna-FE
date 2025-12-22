@@ -19,7 +19,7 @@ import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import RouteDetailModal from "../../../../components/RouteDetailModal";
 import COLORS from "../../../../data/colors";
-import RouteCard from "../../../../components/RouteCard"; 
+import RouteCard from "../../../../components/RouteCard";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -69,7 +69,6 @@ const convertToSavedRoute = (route: IRecordedRoute): any => {
     isRecordedRoute: true, // Flag for the modal
   };
 };
-
 
 const CommunityPage = () => {
   const { t, isRTL } = useLanguage();
@@ -138,11 +137,11 @@ const CommunityPage = () => {
     }
   };
 
- const handleRefresh = async () => {
-   setRefreshing(true);
-   await loadPublicRoutes(1, true); // Pass true to indicate a refresh
-   setRefreshing(false);
- };
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadPublicRoutes(1, true); // Pass true to indicate a refresh
+    setRefreshing(false);
+  };
 
   const handleLoadMore = () => {
     if (pagination.page < pagination.pages && !loading) {
@@ -206,7 +205,6 @@ const CommunityPage = () => {
       />
     );
   };
-
 
   if (loading && routes.length === 0) {
     return (
@@ -301,6 +299,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
+    borderBottomLeftRadius: 35,
+    borderBottomRightRadius: 35,
   },
   headerTitle: {
     fontSize: 28,

@@ -24,7 +24,7 @@ import { useAlert } from "../../../../context/AlertContext";
 import RouteDetailModal from "../../../../components/RouteDetailModal";
 import api from "../../../../api/index";
 import COLORS from "../../../../data/colors";
-import RouteCard from "../../../../components/RouteCard"; 
+import RouteCard from "../../../../components/RouteCard";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -135,7 +135,6 @@ const SavedRoutesScreen = () => {
     await fetchSavedRoutes();
     await loadAllData(true); // Pass true to indicate a refresh
     setRefreshing(false);
-
   };
 
   const handleRoutePress = (route: any) => {
@@ -225,18 +224,17 @@ const SavedRoutesScreen = () => {
     return matchesSearch && matchesFolder;
   });
 
- const renderRouteItem = ({ item }: { item: any }) => {
-   return (
-     <RouteCard
-       name={item.routeId?.name}
-       distance={formatDistance(item.routeId?.distance)}
-       location={item.folderId?.name || "Uncategorized"} // Using folder name as location
-       routeType={item.routeId?.routeType}
-       onPress={() => handleRoutePress(item)}
-     />
-   );
- };
-
+  const renderRouteItem = ({ item }: { item: any }) => {
+    return (
+      <RouteCard
+        name={item.routeId?.name}
+        distance={formatDistance(item.routeId?.distance)}
+        location={item.folderId?.name || "Uncategorized"} // Using folder name as location
+        routeType={item.routeId?.routeType}
+        onPress={() => handleRoutePress(item)}
+      />
+    );
+  };
 
   if (loading && allRoutes.length === 0) {
     return (
@@ -356,6 +354,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
+    borderBottomLeftRadius: 35,
+    borderBottomRightRadius: 35,
   },
   headerTitle: {
     fontSize: 28,
