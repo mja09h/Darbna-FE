@@ -56,6 +56,7 @@ interface AuthContextType {
   ) => Promise<User>;
   logout: () => Promise<void>;
   updateUserState: (user: User) => void;
+  refreshSubscriptionStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -242,6 +243,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(updatedUser);
   };
 
+  const refreshSubscriptionStatus = async () => {
+    if (!user?._id) return;
+
+    try {
+      const subscriptionData = await getSubscriptionStatus();
+      if (user) {
+        updateUserState({
+          ...user,
+          subscriptionPlan: subscriptionData.subscriptionPlan,
+          subscriptionStatus: subscriptionData.subscriptionStatus,
+          cardInfo: subscriptionData.cardInfo,
+          subscriptionStartDate: subscriptionData.subscriptionStartDate,
+          subscriptionEndDate: subscriptionData.subscriptionEndDate,
+        });
+      }
+    } catch (error) {
+      console.error("Error refreshing subscription status:", error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -252,6 +273,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         register,
         logout,
         updateUserState,
+        refreshSubscriptionStatus,
       }}
     >
       {children}

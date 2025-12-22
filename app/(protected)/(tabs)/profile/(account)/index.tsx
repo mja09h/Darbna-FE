@@ -21,6 +21,7 @@ import CustomAlert, {
   AlertButton,
 } from "../../../../../components/CustomAlert";
 import { deleteUser } from "../../../../../api/user";
+import { maskCardNumber } from "../../../../../utils/cardValidation";
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -212,6 +213,23 @@ const AccountScreen = () => {
                 router.push(
                   "/(protected)/(tabs)/profile/(account)/subscriptions"
                 )
+              )}
+            </View>
+          )}
+
+          {renderSection(
+            t.profile?.paymentInfo || "Payment Information",
+            <View>
+              {renderItem(
+                "card-outline",
+                t.profile?.paymentInfo || "Payment Information",
+                user?.cardInfo?.cardNumber
+                  ? maskCardNumber(user.cardInfo.cardNumber)
+                  : t.profile?.noPaymentInfo || "Not set",
+                () =>
+                  router.push(
+                    "/(protected)/(tabs)/profile/(account)/paymentInfo"
+                  )
               )}
             </View>
           )}
