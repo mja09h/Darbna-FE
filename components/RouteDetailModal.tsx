@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   View,
@@ -14,6 +14,8 @@ import {
   Switch,
   Alert,
   Linking,
+  FlatList,
+  ViewToken,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ISavedRoute } from "../context/SavedRoutesContext";
@@ -24,6 +26,11 @@ import { useAlert } from "../context/AlertContext";
 import api from "../api/index";
 import { useLanguage } from "../context/LanguageContext";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import { getToken } from "../api/storage";
+import { BASE_URL } from "../api/index";
+import * as FileSystem from "expo-file-system/legacy";
+import ImageView from "react-native-image-viewing";
 
 const { width, height } = Dimensions.get("window");
 
@@ -33,6 +40,7 @@ interface RouteDetailModalProps {
   route: ISavedRoute | null;
   onRouteUpdated?: () => void;
   onRouteDeleted?: (routeId: string) => void;
+  isFromCommunity?: boolean;
 }
 
 const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
@@ -41,18 +49,22 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
   route,
   onRouteUpdated,
   onRouteDeleted,
+  isFromCommunity = false,
 }) => {
   const { units } = useSettings();
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
   const { alert } = useAlert();
   const router = useRouter();
+
+  // All useState hooks
+  const [internalRoute, setInternalRoute] = useState<ISavedRoute | null>(route);
+  const [newImages, setNewImages] = useState<Array<{ uri: string }>>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Edit form state
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [editedIsPublic, setEditedIsPublic] = useState(false);
@@ -60,15 +72,28 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
   const [editedDifficulty, setEditedDifficulty] = useState("");
   const [editedLocation, setEditedLocation] = useState("");
 
+  // All useRef hooks
+  const flatListRef = useRef<FlatList>(null);
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0) {
+        setCurrentImageIndex(viewableItems[0].index || 0);
+      }
+    }
+  ).current;
+
+  // All useEffect hooks
   useEffect(() => {
     if (route) {
       setEditedName(route.routeId?.name || "");
       setEditedDescription(route.routeId?.description || "");
-      setEditedIsPublic(route.routeId?.isPublic || false);  // FIXED: Changed from route.isPublic
+      setEditedIsPublic(route.routeId?.isPublic || false);
       setEditedRouteType(route.routeId?.routeType || "Other");
       setEditedDifficulty(route.routeId?.difficulty || "Moderate");
       setEditedLocation(route.routeId?.location || "");
       setIsEditMode(false);
+      setInternalRoute(route);
+      setCurrentImageIndex(0);
     }
   }, [route]);
 
@@ -140,13 +165,16 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
 
   const handleSaveEdit = async () => {
     if (!editedName.trim()) {
-      alert("Error", "Route name cannot be empty");
+      alert("Error", "Route name is required");
       return;
     }
 
     try {
       setIsSaving(true);
-      await api.put(`/routes/${actualRouteId}`, {
+      let updatedRouteData = null;
+
+      // Step 1: Update route metadata
+      const metadataResponse = await api.put(`/routes/${actualRouteId}`, {
         name: editedName,
         description: editedDescription,
         isPublic: editedIsPublic,
@@ -155,16 +183,56 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         location: editedLocation,
       });
 
+      if (metadataResponse.data.route) {
+        updatedRouteData = {
+          ...internalRoute,
+          routeId: metadataResponse.data.route,
+        };
+      }
+
+      // Step 2: Convert images to Base64 and upload
+      if (newImages.length > 0) {
+        const base64Images = [];
+        for (const image of newImages) {
+          const base64 = await FileSystem.readAsStringAsync(image.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          base64Images.push(`data:image/jpeg;base64,${base64}`);
+        }
+
+        const imageResponse = await api.post(
+          `/routes/${actualRouteId}/images`,
+          {
+            images: base64Images,
+          }
+        );
+
+        if (imageResponse.data) {
+          updatedRouteData = { ...internalRoute, routeId: imageResponse.data };
+        }
+      }
+
+      // Step 3: Update the local state to refresh the UI
+      if (updatedRouteData) {
+        setInternalRoute(updatedRouteData as ISavedRoute);
+      }
+
       alert("Success", "Route updated successfully");
       setIsEditMode(false);
+      setNewImages([]);
       onRouteUpdated?.();
-      onClose(); // Add this line to close the modal
-    } catch (error) {
-      alert("Error", "Failed to update route");
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "An unexpected error occurred.";
+      console.error("❌ Failed to update route:", errorMessage);
+      alert("Error", errorMessage);
     } finally {
       setIsSaving(false);
     }
   };
+
   const handleDelete = () => {
     alert("Delete Route", "Are you sure you want to delete this route?", [
       { text: "Cancel", style: "cancel" },
@@ -176,6 +244,36 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         },
       },
     ]);
+  };
+
+  const pickImage = async (source: "gallery" | "camera") => {
+    const hasPermission = await (source === "gallery"
+      ? ImagePicker.requestMediaLibraryPermissionsAsync()
+      : ImagePicker.requestCameraPermissionsAsync());
+    if (hasPermission.status !== "granted") {
+      alert(
+        "Permission needed",
+        "You need to grant permission to access photos."
+      );
+      return;
+    }
+
+    const result = await (source === "gallery"
+      ? ImagePicker.launchImageLibraryAsync
+      : ImagePicker.launchCameraAsync)({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setNewImages([...newImages, { uri: result.assets[0].uri }]);
+    }
+  };
+
+  const removeNewImage = (index: number) => {
+    setNewImages(newImages.filter((_, i) => i !== index));
   };
 
   const handleShowMap = () => {
@@ -242,7 +340,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         {route?.routeId?.name}
       </Text>
 
-      {isCreator && (
+      {isCreator && !isFromCommunity && (
         <TouchableOpacity
           style={[
             styles.headerButton,
@@ -257,16 +355,19 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
           />
         </TouchableOpacity>
       )}
+      {!isCreator && <View style={{ width: 40 }} />}
     </View>
   );
 
   const renderHeroImage = () => {
-    const images = [
-      ...(route?.routeId?.screenshot ? [route.routeId.screenshot.url] : []),
-      ...(route?.routeId?.images?.map((img: any) => img.url) || []),
-    ];
+    const allImages = [
+      ...(internalRoute?.routeId?.screenshot
+        ? [internalRoute.routeId.screenshot.url]
+        : []),
+      ...(internalRoute?.routeId?.images?.map((img: any) => img.url) || []),
+    ].filter(Boolean);
 
-    if (images.length === 0) {
+    if (allImages.length === 0) {
       return (
         <View
           style={[styles.heroImage, { backgroundColor: colors.primaryLight }]}
@@ -276,15 +377,44 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
       );
     }
 
+    const formattedImagesForViewer = allImages.map((imgUrl) => ({
+      uri: imgUrl.startsWith("/")
+        ? `${BASE_URL.replace("/api", "")}${imgUrl}`
+        : imgUrl,
+    }));
+
     return (
       <View>
-        <Image
-          source={{ uri: images[currentImageIndex] }}
-          style={styles.heroImage}
+        <FlatList
+          ref={flatListRef}
+          data={allImages}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(_, index) => index.toString()}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+          renderItem={({ item }) => {
+            const imageUri = item.startsWith("/")
+              ? `${BASE_URL.replace("/api", "")}${item}`
+              : item;
+            return (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setImageViewerVisible(true)}
+              >
+                <Image
+                  source={{ uri: imageUri }}
+                  style={styles.heroImage}
+                  onError={(error) => console.error("Image load error:", error)}
+                />
+              </TouchableOpacity>
+            );
+          }}
         />
-        {images.length > 1 && (
+        {allImages.length > 1 && (
           <View style={styles.imageIndicator}>
-            {images.map((_, index) => (
+            {allImages.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -298,6 +428,14 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
             ))}
           </View>
         )}
+        <ImageView
+          images={formattedImagesForViewer}
+          imageIndex={currentImageIndex}
+          visible={imageViewerVisible}
+          onRequestClose={() => setImageViewerVisible(false)}
+          swipeToCloseEnabled
+          doubleTapToZoomEnabled
+        />
       </View>
     );
   };
@@ -351,8 +489,8 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         </View>
       </View>
 
+      {/* Details */}
       <View style={styles.detailsContainer}>
-        {/* Difficulty & Rating */}
         <View style={styles.detailRow}>
           <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
             Difficulty
@@ -361,9 +499,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
             style={[
               styles.difficultyBadge,
               {
-                backgroundColor: getDifficultyColor(
-                  route?.routeId?.difficulty || "Moderate"
-                ),
+                backgroundColor: getDifficultyColor(route?.routeId?.difficulty || "Moderate"),
               },
             ]}
           >
@@ -378,9 +514,9 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
             Rating
           </Text>
           <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={16} color={"#FFC107"} />
+            <Ionicons name="star" size={16} color="#FFD700" />
             <Text style={[styles.ratingText, { color: colors.text }]}>
-              {route?.routeId?.rating?.toFixed(1) || "4.0"}
+              {route?.routeId?.rating || 4.0}
             </Text>
           </View>
         </View>
@@ -402,7 +538,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
                 onPress={() => setShowFullDescription(!showFullDescription)}
               >
                 <Text style={[styles.readMore, { color: colors.primary }]}>
-                  {showFullDescription ? "Read Less" : "Read More"}
+                  {showFullDescription ? "Show Less" : "Read More"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -410,31 +546,26 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         )}
 
         {/* Route Points */}
-        {(route?.routeId?.startPoint || route?.routeId?.endPoint) && (
+        {route?.routeId?.startPoint && (
           <View style={styles.pointsContainer}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Route Points
             </Text>
 
-            {route?.routeId?.startPoint && (
-              <View style={styles.pointRow}>
-                <Ionicons name="location" size={20} color="#4CAF50" />
-                <View style={styles.pointInfo}>
-                  <Text style={[styles.pointLabel, { color: colors.text }]}>
-                    Start Point
-                  </Text>
-                  <Text
-                    style={[
-                      styles.pointCoords,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    {route.routeId.startPoint.latitude.toFixed(6)},{" "}
-                    {route.routeId.startPoint.longitude.toFixed(6)}
-                  </Text>
-                </View>
+            <View style={styles.pointRow}>
+              <Ionicons name="location" size={20} color="#4CAF50" />
+              <View style={styles.pointInfo}>
+                <Text style={[styles.pointLabel, { color: colors.text }]}>
+                  Start Point
+                </Text>
+                <Text
+                  style={[styles.pointCoords, { color: colors.textSecondary }]}
+                >
+                  {route.routeId.startPoint.latitude.toFixed(6)},{" "}
+                  {route.routeId.startPoint.longitude.toFixed(6)}
+                </Text>
               </View>
-            )}
+            </View>
 
             {route?.routeId?.endPoint && (
               <View style={styles.pointRow}>
@@ -459,7 +590,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         )}
       </View>
 
-      {/* Action Buttons */}
+      {/* Buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.primaryButton, { backgroundColor: colors.primary }]}
@@ -468,31 +599,23 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
           <Ionicons name="navigate" size={20} color="#fff" />
           <Text style={styles.primaryButtonText}>Get Directions</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[
-            styles.secondaryButton,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
+          style={[styles.secondaryButton, { borderColor: colors.primary }]}
           onPress={handleShowMap}
         >
-          <Ionicons name="map-outline" size={20} color={colors.text} />
-          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+          <Ionicons name="map" size={20} color={colors.primary} />
+          <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>
             Map
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Delete Button */}
-      {isCreator && (
+      {isCreator && !isFromCommunity && (
         <TouchableOpacity
-          style={[
-            styles.deleteButton,
-            { backgroundColor: "rgba(244, 67, 54, 0.1)" },
-          ]}
+          style={[styles.deleteButton, { backgroundColor: "#ffebee" }]}
           onPress={handleDelete}
         >
-          <Ionicons name="trash-outline" size={20} color="#F44336" />
+          <Ionicons name="trash" size={20} color="#F44336" />
           <Text style={styles.deleteButtonText}>Delete Route</Text>
         </TouchableOpacity>
       )}
@@ -599,6 +722,49 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         />
       </View>
 
+      {/* Images Section */}
+      <View style={styles.imageGallery}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Images
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.imageGallery}
+        >
+          {newImages.map((image, index) => (
+            <View key={index} style={styles.imageContainer}>
+              <Image
+                source={{ uri: image.uri }}
+                style={styles.thumbnailImage}
+              />
+              <TouchableOpacity
+                style={styles.removeImageButton}
+                onPress={() => removeNewImage(index)}
+              >
+                <Ionicons name="close-circle" size={24} color="#ff6b6b" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.imageButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.imageButton, { backgroundColor: colors.primary }]}
+            onPress={() => pickImage("camera")}
+          >
+            <Ionicons name="camera" size={20} color="#fff" />
+            <Text style={styles.imageButtonText}>Camera</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.imageButton, { backgroundColor: colors.primary }]}
+            onPress={() => pickImage("gallery")}
+          >
+            <Ionicons name="image" size={20} color="#fff" />
+            <Text style={styles.imageButtonText}>Gallery</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <TouchableOpacity
         style={[
           styles.primaryButton,
@@ -662,7 +828,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   heroImage: {
-    width: "100%",
+    width: width,
     height: 300,
     justifyContent: "center",
     alignItems: "center",
@@ -673,6 +839,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     gap: 6,
+    position: "absolute",
+    bottom: 10,
+    width: "100%",
   },
   dot: {
     width: 8,
@@ -845,6 +1014,44 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 16,
+  },
+  imageGallery: {
+    marginVertical: 12,
+  },
+  imageContainer: {
+    marginRight: 12,
+    position: "relative",
+  },
+  thumbnailImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+  },
+  imageButtonsContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+  },
+  imageButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  imageButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
 

@@ -279,6 +279,7 @@ const CommunityPage = () => {
         visible={showRouteModal}
         onClose={handleCloseRouteModal}
         route={selectedRoute}
+        isFromCommunity={true}
       />
     </View>
   );
