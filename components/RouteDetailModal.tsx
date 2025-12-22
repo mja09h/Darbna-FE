@@ -12,6 +12,7 @@ import {
   TextInput,
   ActivityIndicator,
   Switch,
+  Alert,
   Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,7 +23,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAlert } from "../context/AlertContext";
 import api from "../api/index";
 import { useLanguage } from "../context/LanguageContext";
-import InteractiveMap from "./InteractiveMap";
+import { useRouter } from "expo-router";
 
 const { width, height } = Dimensions.get("window");
 
@@ -44,11 +45,12 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
   const { units } = useSettings();
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
+  const { alert } = useAlert();
+  const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showMapModal, setShowMapModal] = useState(false);
 
   // Edit form state
   const [editedName, setEditedName] = useState("");
@@ -62,7 +64,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
     if (route) {
       setEditedName(route.routeId?.name || "");
       setEditedDescription(route.routeId?.description || "");
-      setEditedIsPublic(route.isFavorite || false);
+      setEditedIsPublic(route.routeId?.isPublic || false);  // FIXED: Changed from route.isPublic
       setEditedRouteType(route.routeId?.routeType || "Other");
       setEditedDifficulty(route.routeId?.difficulty || "Moderate");
       setEditedLocation(route.routeId?.location || "");
@@ -156,13 +158,13 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
       alert("Success", "Route updated successfully");
       setIsEditMode(false);
       onRouteUpdated?.();
+      onClose(); // Add this line to close the modal
     } catch (error) {
       alert("Error", "Failed to update route");
     } finally {
       setIsSaving(false);
     }
   };
-
   const handleDelete = () => {
     alert("Delete Route", "Are you sure you want to delete this route?", [
       { text: "Cancel", style: "cancel" },
@@ -176,20 +178,17 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
     ]);
   };
 
-  // NEW: Handle Map button press
   const handleShowMap = () => {
-    console.log("Map button pressed");
-    console.log("Route data:", JSON.stringify(route, null, 2));
-    setShowMapModal(true);
+    onClose();
+    router.push({
+      pathname: "/(protected)/(tabs)/home",
+      params: { route: JSON.stringify(route.routeId) },
+    });
   };
 
-  // NEW: Handle Get Directions button press
   const handleGetDirections = async () => {
     try {
       const startPoint = route.routeId?.startPoint;
-
-      console.log("Get Directions pressed");
-      console.log("Start point:", startPoint);
 
       if (!startPoint || !startPoint.latitude || !startPoint.longitude) {
         alert("Error", "Start point not available for this route");
@@ -199,7 +198,6 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
       const latitude = startPoint.latitude;
       const longitude = startPoint.longitude;
 
-      // Try Google Maps first
       const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
       const appleMapsUrl = `maps://maps.apple.com/?daddr=${latitude},${longitude}`;
 
@@ -353,62 +351,39 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
         </View>
       </View>
 
-      {/* Route Details */}
       <View style={styles.detailsContainer}>
-        {/* Difficulty */}
-        {route?.routeId?.difficulty && (
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-              Difficulty
+        {/* Difficulty & Rating */}
+        <View style={styles.detailRow}>
+          <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+            Difficulty
+          </Text>
+          <View
+            style={[
+              styles.difficultyBadge,
+              {
+                backgroundColor: getDifficultyColor(
+                  route?.routeId?.difficulty || "Moderate"
+                ),
+              },
+            ]}
+          >
+            <Text style={[styles.difficultyText, { color: "#fff" }]}>
+              {route?.routeId?.difficulty || "Moderate"}
             </Text>
-            <View
-              style={[
-                styles.difficultyBadge,
-                {
-                  backgroundColor:
-                    getDifficultyColor(route.routeId.difficulty) + "20",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.difficultyText,
-                  {
-                    color: getDifficultyColor(route.routeId.difficulty),
-                  },
-                ]}
-              >
-                {route.routeId.difficulty}
-              </Text>
-            </View>
           </View>
-        )}
+        </View>
 
-        {/* Rating */}
-        {route?.routeId?.rating && (
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-              Rating
+        <View style={styles.detailRow}>
+          <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
+            Rating
+          </Text>
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={16} color={"#FFC107"} />
+            <Text style={[styles.ratingText, { color: colors.text }]}>
+              {route?.routeId?.rating?.toFixed(1) || "4.0"}
             </Text>
-            <View style={styles.ratingContainer}>
-              {[...Array(5)].map((_, i) => (
-                <Ionicons
-                  key={i}
-                  name={
-                    i < Math.floor(route.routeId.rating || 0)
-                      ? "star"
-                      : "star-outline"
-                  }
-                  size={16}
-                  color="#FFB800"
-                />
-              ))}
-              <Text style={[styles.ratingText, { color: colors.text }]}>
-                {route.routeId.rating?.toFixed(1)}
-              </Text>
-            </View>
           </View>
-        )}
+        </View>
 
         {/* Description */}
         {route?.routeId?.description && (
@@ -427,7 +402,7 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
                 onPress={() => setShowFullDescription(!showFullDescription)}
               >
                 <Text style={[styles.readMore, { color: colors.primary }]}>
-                  {showFullDescription ? "Show less" : "Show more"}
+                  {showFullDescription ? "Read Less" : "Read More"}
                 </Text>
               </TouchableOpacity>
             )}
@@ -525,240 +500,134 @@ const RouteDetailModal: React.FC<RouteDetailModalProps> = ({
   );
 
   const renderEditMode = () => (
-    <View style={styles.editContainer}>
-      {/* Name */}
-      <View style={styles.editField}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>
-          Route Name
+    <View style={styles.detailsContainer}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>
+        Edit Route
+      </Text>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          Name
         </Text>
         <TextInput
           style={[
-            styles.editInput,
-            {
-              backgroundColor: colors.surface,
-              color: colors.text,
-              borderColor: colors.border,
-            },
+            styles.input,
+            { color: colors.text, borderColor: colors.border },
           ]}
           value={editedName}
           onChangeText={setEditedName}
+          placeholder="Route Name"
           placeholderTextColor={colors.textSecondary}
         />
       </View>
 
-      {/* Description */}
-      <View style={styles.editField}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
           Description
         </Text>
         <TextInput
           style={[
-            styles.editInput,
-            styles.editTextArea,
-            {
-              backgroundColor: colors.surface,
-              color: colors.text,
-              borderColor: colors.border,
-            },
+            styles.input,
+            styles.multilineInput,
+            { color: colors.text, borderColor: colors.border },
           ]}
           value={editedDescription}
           onChangeText={setEditedDescription}
-          multiline
-          numberOfLines={4}
+          placeholder="Description"
           placeholderTextColor={colors.textSecondary}
+          multiline
         />
       </View>
 
-      {/* Route Type */}
-      <View style={styles.editField}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>
-          Route Type
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          Location
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.typeSelector}
-        >
-          {["Running", "Cycling", "Walking", "Hiking", "Other"].map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.typeOption,
-                {
-                  backgroundColor:
-                    editedRouteType === type ? colors.primary : colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={() => setEditedRouteType(type)}
-            >
-              <Text
-                style={[
-                  styles.typeOptionText,
-                  {
-                    color: editedRouteType === type ? "#fff" : colors.text,
-                  },
-                ]}
-              >
-                {type}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Difficulty */}
-      <View style={styles.editField}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>
-          Difficulty
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.typeSelector}
-        >
-          {["Easy", "Moderate", "Hard"].map((diff) => (
-            <TouchableOpacity
-              key={diff}
-              style={[
-                styles.typeOption,
-                {
-                  backgroundColor:
-                    editedDifficulty === diff ? colors.primary : colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={() => setEditedDifficulty(diff)}
-            >
-              <Text
-                style={[
-                  styles.typeOptionText,
-                  {
-                    color: editedDifficulty === diff ? "#fff" : colors.text,
-                  },
-                ]}
-              >
-                {diff}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Location */}
-      <View style={styles.editField}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>Location</Text>
         <TextInput
           style={[
-            styles.editInput,
-            {
-              backgroundColor: colors.surface,
-              color: colors.text,
-              borderColor: colors.border,
-            },
+            styles.input,
+            { color: colors.text, borderColor: colors.border },
           ]}
           value={editedLocation}
           onChangeText={setEditedLocation}
+          placeholder="e.g. Riyadh, Saudi Arabia"
           placeholderTextColor={colors.textSecondary}
         />
       </View>
 
-      {/* Public Switch */}
-      <View style={styles.editField}>
-        <Text style={[styles.editLabel, { color: colors.text }]}>
-          Make Public
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          Route Type
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            { color: colors.text, borderColor: colors.border },
+          ]}
+          value={editedRouteType}
+          onChangeText={setEditedRouteType}
+          placeholder="e.g. Hiking, Running"
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          Difficulty
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            { color: colors.text, borderColor: colors.border },
+          ]}
+          value={editedDifficulty}
+          onChangeText={setEditedDifficulty}
+          placeholder="e.g. Easy, Moderate, Hard"
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      <View style={styles.switchContainer}>
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+          Public
         </Text>
         <Switch
           value={editedIsPublic}
           onValueChange={setEditedIsPublic}
-          trackColor={{ false: colors.border, true: colors.primary }}
+          trackColor={{ false: "#767577", true: colors.primary }}
+          thumbColor={editedIsPublic ? colors.primaryLight : "#f4f3f4"}
         />
       </View>
 
-      {/* Save Button */}
       <TouchableOpacity
-        style={[styles.saveButton, { backgroundColor: colors.primary }]}
+        style={[
+          styles.primaryButton,
+          { backgroundColor: colors.primary, marginTop: 20 },
+        ]}
         onPress={handleSaveEdit}
         disabled={isSaving}
       >
         {isSaving ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <>
-            <Ionicons name="checkmark" size={20} color="#fff" />
-            <Text style={styles.saveButtonText}>Save Changes</Text>
-          </>
+          <Text style={styles.primaryButtonText}>Save Changes</Text>
         )}
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <>
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-        <SafeAreaView
-          style={[styles.container, { backgroundColor: colors.background }]}
-        >
-          {renderHeader()}
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {renderHeroImage()}
-            {isEditMode ? renderEditMode() : renderViewMode()}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Map Modal */}
-      {showMapModal && route?.routeId?.path && (
-        <Modal
-          visible={showMapModal}
-          animationType="slide"
-          onRequestClose={() => setShowMapModal(false)}
-        >
-          <SafeAreaView
-            style={[styles.container, { backgroundColor: colors.background }]}
-          >
-            <View style={styles.mapHeader}>
-              <TouchableOpacity
-                style={[
-                  styles.headerButton,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                onPress={() => setShowMapModal(false)}
-              >
-                <Ionicons name="chevron-back" size={24} color={colors.text} />
-              </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>
-                Route Map
-              </Text>
-              <View style={{ width: 40 }} />
-            </View>
-
-            <InteractiveMap
-              userLocation={null}
-              currentRoute={
-                route.routeId?.points && route.routeId.points.length > 0
-                  ? {
-                      name: route.routeId.name || "",
-                      description: route.routeId.description || "",
-                      points: route.routeId.points,
-                      startTime: null,
-                      distance: route.routeId.distance || 0,
-                      duration: route.routeId.duration || 0,
-                    }
-                  : null
-              }
-            />
-          </SafeAreaView>
-        </Modal>
-      )}
-    </>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        {renderHeader()}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {renderHeroImage()}
+          {isEditMode ? renderEditMode() : renderViewMode()}
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
   );
 };
 
@@ -768,16 +637,8 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  mapHeader: {
-    flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -791,13 +652,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
     flex: 1,
     textAlign: "center",
-  },
-  scrollView: {
-    flex: 1,
+    fontSize: 18,
+    fontWeight: "600",
+    marginHorizontal: 12,
   },
   scrollContent: {
     paddingBottom: 20,
@@ -899,125 +758,93 @@ const styles = StyleSheet.create({
   },
   pointRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
+    alignItems: "center",
+    marginBottom: 16,
   },
   pointInfo: {
     marginLeft: 12,
-    flex: 1,
   },
   pointLabel: {
     fontSize: 14,
     fontWeight: "600",
-    marginBottom: 2,
   },
   pointCoords: {
     fontSize: 12,
   },
   buttonContainer: {
     flexDirection: "row",
-    gap: 12,
+    justifyContent: "space-around",
     paddingHorizontal: 16,
     marginTop: 20,
   },
   primaryButton: {
     flex: 1,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 25,
+    marginHorizontal: 8,
   },
   primaryButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+    marginLeft: 8,
   },
   secondaryButton: {
     flex: 1,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 25,
     borderWidth: 1,
-    gap: 8,
+    marginHorizontal: 8,
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: "600",
+    marginLeft: 8,
   },
   deleteButton: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 16,
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 25,
+    marginHorizontal: 24,
     marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
   },
   deleteButtonText: {
     color: "#F44336",
     fontSize: 16,
     fontWeight: "600",
+    marginLeft: 8,
   },
-  editContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  editField: {
+  inputGroup: {
     marginBottom: 16,
   },
-  editLabel: {
+  inputLabel: {
     fontSize: 14,
-    fontWeight: "600",
     marginBottom: 8,
   },
-  editInput: {
+  input: {
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
   },
-  editTextArea: {
+  multilineInput: {
+    height: 100,
     textAlignVertical: "top",
-    paddingTop: 10,
   },
-  typeSelector: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
-  },
-  typeOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-  },
-  typeOptionText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  saveButton: {
+  switchContainer: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-    gap: 8,
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    marginTop: 16,
   },
 });
 

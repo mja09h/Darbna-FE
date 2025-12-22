@@ -31,6 +31,7 @@ export interface ISavedRoute {
     location?: string;
     terrain?: string;
     userId?: string;
+    isPublic?: boolean;
     screenshot?: {
       url: string;
       uploadedAt: Date;

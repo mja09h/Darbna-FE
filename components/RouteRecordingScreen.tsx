@@ -27,6 +27,8 @@ const RouteRecordingScreen = () => {
   const { alert } = useAlert();
 
   const [routeName, setRouteName] = useState("");
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [promptInput, setPromptInput] = useState("");
   const [routeDescription, setRouteDescription] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
@@ -114,28 +116,23 @@ const RouteRecordingScreen = () => {
   }, [isRecording]);
 
   const handleStartRecording = () => {
-    Alert.prompt(
-      "Route Name",
-      "Enter a name for this route:",
-      [
-        {
-          text: "Cancel",
-          onPress: () => {},
-          style: "cancel",
-        },
-        {
-          text: "Start",
-          onPress: (name?: string) => {
-            if (name && name.trim()) {
-              startRecording(name.trim());
-              setRouteName(name.trim());
-              setRecordingTime(0);
-            }
-          },
-        },
-      ],
-      "plain-text"
-    );
+    setPromptInput("");
+    setShowNamePrompt(true);
+  };
+
+  const handlePromptConfirm = () => {
+    if (promptInput.trim()) {
+      startRecording(promptInput.trim());
+      setRouteName(promptInput.trim());
+      setRecordingTime(0);
+      setShowNamePrompt(false);
+      setPromptInput("");
+    }
+  };
+
+  const handlePromptCancel = () => {
+    setShowNamePrompt(false);
+    setPromptInput("");
   };
 
   const handleStopRecording = () => {
@@ -331,6 +328,50 @@ const RouteRecordingScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Route Name Prompt Modal */}
+      <Modal
+        visible={showNamePrompt}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handlePromptCancel}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Route Name</Text>
+            <Text style={styles.modalMessage}>
+              Enter a name for this route:
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Route Name"
+              value={promptInput}
+              onChangeText={setPromptInput}
+              placeholderTextColor="#999"
+              autoFocus={true}
+              onSubmitEditing={handlePromptConfirm}
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={handlePromptCancel}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handlePromptConfirm}
+              >
+                <Text style={[styles.modalButtonText, { color: "#fff" }]}>
+                  Start
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -414,6 +455,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 16,
     color: "#333",
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
