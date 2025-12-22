@@ -69,10 +69,10 @@ const ChangePasswordScreen = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 5) {
       showAlert(
         t.common.error,
-        "Password must be at least 6 characters long",
+        "Password must be at least 5 characters long",
         "error"
       );
       return;
