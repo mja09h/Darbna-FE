@@ -11,6 +11,7 @@ import {
   Modal,
   TextInput,
   StatusBar,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -23,6 +24,7 @@ import { useAlert } from "../../../../context/AlertContext";
 import RouteDetailModal from "../../../../components/RouteDetailModal";
 import api from "../../../../api/index";
 import COLORS from "../../../../data/colors";
+import RouteCard from "../../../../components/RouteCard"; 
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -90,17 +92,21 @@ const SavedRoutesScreen = () => {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAllData();
+    loadAllData(); // This is the initial load, so no argument is needed
   }, [contextSavedRoutes]);
 
-  const loadAllData = async () => {
+  const loadAllData = async (isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (!isRefreshing) {
+        setLoading(true);
+      }
       await fetchUserRecordedRoutes();
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
-      setLoading(false);
+      if (!isRefreshing) {
+        setLoading(false);
+      }
     }
   };
 
@@ -127,8 +133,9 @@ const SavedRoutesScreen = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchSavedRoutes();
-    await fetchUserRecordedRoutes();
+    await loadAllData(true); // Pass true to indicate a refresh
     setRefreshing(false);
+
   };
 
   const handleRoutePress = (route: any) => {
@@ -218,107 +225,35 @@ const SavedRoutesScreen = () => {
     return matchesSearch && matchesFolder;
   });
 
-  const renderRouteItem = ({ item }: { item: any }) => {
-    const isRecorded = item.isRecordedRoute;
-    const folderName = item.folderId?.name || "Uncategorized";
+ const renderRouteItem = ({ item }: { item: any }) => {
+   return (
+     <RouteCard
+       name={item.routeId?.name}
+       distance={formatDistance(item.routeId?.distance)}
+       location={item.folderId?.name || "Uncategorized"} // Using folder name as location
+       routeType={item.routeId?.routeType}
+       onPress={() => handleRoutePress(item)}
+     />
+   );
+ };
 
-    return (
-      <TouchableOpacity
-        style={styles.routeItemContainer}
-        activeOpacity={0.7}
-        onPress={() => handleRoutePress(item)}
-      >
-        <View style={styles.routeCard}>
-          {/* Route Icon */}
-          <View style={styles.iconContainer}>
-            <Ionicons
-              name={getRouteIcon(item.routeId?.routeType) as any}
-              size={28}
-              color={COLORS.white}
-            />
-          </View>
 
-          {/* Route Info */}
-          <View style={styles.infoContainer}>
-            <Text style={styles.routeName} numberOfLines={1}>
-              {item.routeId?.name}
-            </Text>
-            <View style={styles.metadataRow}>
-              <View style={styles.metadataItem}>
-                <Ionicons
-                  name="resize-outline"
-                  size={14}
-                  color={COLORS.lightText}
-                />
-                <Text style={styles.metadataText}>
-                  {formatDistance(item.routeId?.distance)}
-                </Text>
-              </View>
-              <View style={styles.metadataItem}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={14}
-                  color={COLORS.lightText}
-                />
-                <Text style={styles.metadataText}>
-                  {formatDate(item.savedAt)}
-                </Text>
-              </View>
-            </View>
-            {folderName && (
-              <View style={styles.folderBadge}>
-                <Ionicons
-                  name="folder-outline"
-                  size={12}
-                  color={COLORS.desertOrange}
-                />
-                <Text style={styles.folderText}>{folderName}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionContainer}>
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                handleFavoriteToggle(item._id);
-              }}
-              style={[
-                styles.actionButton,
-                item.isFavorite && styles.actionButtonActive,
-              ]}
-            >
-              <Ionicons
-                name={item.isFavorite ? "heart" : "heart-outline"}
-                size={20}
-                color={item.isFavorite ? COLORS.white : COLORS.lightText}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={(e) => {
-                e.stopPropagation();
-                handleRouteDeleted(item._id);
-              }}
-              style={styles.actionButton}
-            >
-              <Ionicons
-                name="trash-outline"
-                size={20}
-                color={COLORS.lightText}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading) {
+  if (loading && allRoutes.length === 0) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor={HEADER_BG_COLOR} />
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>
+            {t.savedRoutes?.title || "Saved Routes"}
+          </Text>
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => setShowSearchModal(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="search" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.desertOrange} />
         </View>
@@ -345,33 +280,42 @@ const SavedRoutesScreen = () => {
         </View>
 
         {/* Routes List */}
-        {filteredRoutes.length > 0 ? (
-          <FlatList
-            data={filteredRoutes}
-            renderItem={renderRouteItem}
-            keyExtractor={(item) => item._id}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={COLORS.desertOrange}
-              />
-            }
-            contentContainerStyle={styles.listContent}
-          />
-        ) : (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="map-outline" size={80} color={COLORS.lightText} />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={COLORS.desertOrange}
+            />
+          }
+        >
+          {filteredRoutes.length > 0 ? (
+            <FlatList
+              data={filteredRoutes}
+              renderItem={renderRouteItem}
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={styles.listContent}
+              scrollEnabled={false} // Disable FlatList scrolling
+            />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons
+                  name="map-outline"
+                  size={80}
+                  color={COLORS.lightText}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {t.savedRoutes?.noRoutes || "No routes yet"}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                Start recording routes to see them here
+              </Text>
             </View>
-            <Text style={styles.emptyTitle}>
-              {t.savedRoutes?.noRoutes || "No routes yet"}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              Start recording routes to see them here
-            </Text>
-          </View>
-        )}
+          )}
+        </ScrollView>
       </View>
 
       {/* Route Detail Modal */}

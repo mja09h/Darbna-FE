@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useNavigation, useRouter } from "expo-router";
+import { useNavigation, useRouter, useLocalSearchParams } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import { useAlert } from "../../../../context/AlertContext";
@@ -22,6 +22,7 @@ import COLORS from "../../../../data/colors";
 
 const HomePage = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const {
     isRecording,
     currentRoute,
@@ -50,6 +51,18 @@ const HomePage = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [userLocation, setUserLocation] =
     useState<Location.LocationObject | null>(null);
+  const [displayedRoute, setDisplayedRoute] = useState(null);
+
+  // Parse route from navigation params
+  useEffect(() => {
+    if (params.route) {
+      try {
+        setDisplayedRoute(JSON.parse(params.route as string));
+      } catch (error) {
+        console.error("Error parsing route from params:", error);
+      }
+    }
+  }, [params.route]);
 
   // Request location permissions and start tracking user location
   useEffect(() => {
@@ -316,7 +329,8 @@ const HomePage = () => {
         {/* Map */}
         <InteractiveMap
           userLocation={userLocation}
-          currentRoute={currentRoute}
+          currentRoute={displayedRoute || currentRoute}
+          onCloseRoute={() => setDisplayedRoute(null)}
         />
 
         {/* Recording Status Bar */}

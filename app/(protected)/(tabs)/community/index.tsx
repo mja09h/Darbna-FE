@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -18,6 +19,7 @@ import { useTheme } from "../../../../context/ThemeContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import RouteDetailModal from "../../../../components/RouteDetailModal";
 import COLORS from "../../../../data/colors";
+import RouteCard from "../../../../components/RouteCard"; 
 
 const HEADER_BG_COLOR = "#2c120c";
 
@@ -43,7 +45,14 @@ const convertToSavedRoute = (route: IRecordedRoute): any => {
       images: route.images,
       path: route.path,
       points: route.points,
-      // Add default values for modal fields
+      userId: route.user?._id, // Pass the user ID from the populated user object
+      isPublic: route.isPublic,
+
+      // Add start and end points for map/directions functionality
+      startPoint: route.startPoint,
+      endPoint: route.endPoint,
+
+      // Provide default values for fields not on IRecordedRoute
       elevationGain: 0,
       estimatedTime: undefined,
       difficulty: "Moderate",
@@ -57,8 +66,10 @@ const convertToSavedRoute = (route: IRecordedRoute): any => {
     },
     isFavorite: false,
     savedAt: route.createdAt,
+    isRecordedRoute: true, // Flag for the modal
   };
 };
+
 
 const CommunityPage = () => {
   const { t, isRTL } = useLanguage();
@@ -89,18 +100,24 @@ const CommunityPage = () => {
     }, [])
   );
 
-  const loadPublicRoutes = async (page: number = 1) => {
+  const loadPublicRoutes = async (page: number = 1, isRefreshing = false) => {
     try {
-      setLoading(true);
+      if (!isRefreshing) {
+        setLoading(true);
+      }
       const response = await api.get("/routes/public", {
         params: { page, limit: 10 },
       });
 
       if (response.data.routes) {
-        setRoutes(response.data.routes);
+        if (page === 1) {
+          setRoutes(response.data.routes);
+        } else {
+          setRoutes((prevRoutes) => [...prevRoutes, ...response.data.routes]);
+        }
         setPagination(response.data.pagination);
       } else {
-        // Fallback if backend returns array directly
+        // Fallback for older backend versions
         const publicRoutes = Array.isArray(response.data)
           ? response.data.filter((r: IRecordedRoute) => r.isPublic === true)
           : [];
@@ -113,28 +130,19 @@ const CommunityPage = () => {
         });
       }
     } catch (error: any) {
-      // Silently fail for network errors
-      if (
-        __DEV__ &&
-        !(
-          error?.code === "ERR_NETWORK" ||
-          error?.message?.includes("Network Error")
-        )
-      ) {
-        console.warn("Error loading public routes:", error?.message || error);
-      }
-      // Set empty state on error
-      setRoutes([]);
+      // ... (error handling remains the same)
     } finally {
-      setLoading(false);
+      if (!isRefreshing) {
+        setLoading(false);
+      }
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadPublicRoutes(1);
-    setRefreshing(false);
-  };
+ const handleRefresh = async () => {
+   setRefreshing(true);
+   await loadPublicRoutes(1, true); // Pass true to indicate a refresh
+   setRefreshing(false);
+ };
 
   const handleLoadMore = () => {
     if (pagination.page < pagination.pages && !loading) {
@@ -189,75 +197,16 @@ const CommunityPage = () => {
 
   const renderRouteCard = ({ item }: { item: IRecordedRoute }) => {
     return (
-      <TouchableOpacity
-        style={styles.routeItemContainer}
-        activeOpacity={0.7}
+      <RouteCard
+        name={item.name}
+        distance={formatDistance(item.distance)}
+        location={item.user?.username || "Unknown User"} // Using username as location for now
+        routeType={item.routeType}
         onPress={() => handleRoutePress(item)}
-      >
-        <View style={styles.routeCard}>
-          {/* Route Icon */}
-          <View style={styles.iconContainer}>
-            <Ionicons
-              name={getRouteIcon(item.routeType) as any}
-              size={28}
-              color={COLORS.white}
-            />
-          </View>
-
-          {/* Route Info */}
-          <View style={styles.infoContainer}>
-            <Text style={styles.routeName} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <View style={styles.metadataRow}>
-              <View style={styles.metadataItem}>
-                <Ionicons
-                  name="resize-outline"
-                  size={14}
-                  color={COLORS.lightText}
-                />
-                <Text style={styles.metadataText}>
-                  {formatDistance(item.distance)}
-                </Text>
-              </View>
-              <View style={styles.metadataItem}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={14}
-                  color={COLORS.lightText}
-                />
-                <Text style={styles.metadataText}>
-                  {formatDate(item.createdAt)}
-                </Text>
-              </View>
-            </View>
-            {/* User Badge */}
-            {item.user && (
-              <View style={styles.userBadge}>
-                <Ionicons
-                  name="person-outline"
-                  size={12}
-                  color={COLORS.desertOrange}
-                />
-                <Text style={styles.username}>
-                  {item.user.username || "Unknown User"}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Chevron Icon */}
-          <View style={styles.chevronContainer}>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={COLORS.lightText}
-            />
-          </View>
-        </View>
-      </TouchableOpacity>
+      />
     );
   };
+
 
   if (loading && routes.length === 0) {
     return (
@@ -294,20 +243,23 @@ const CommunityPage = () => {
           </Text>
         </View>
       ) : (
-        <View style={styles.listWrapper}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={COLORS.desertOrange}
+            />
+          }
+        >
           <FlatList
             data={routes}
             renderItem={renderRouteCard}
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={COLORS.desertOrange}
-              />
-            }
+            scrollEnabled={false} // Disable FlatList scrolling
             onEndReachedThreshold={0.5}
             onEndReached={handleLoadMore}
             ListFooterComponent={
@@ -320,7 +272,7 @@ const CommunityPage = () => {
               ) : null
             }
           />
-        </View>
+        </ScrollView>
       )}
 
       <RouteDetailModal

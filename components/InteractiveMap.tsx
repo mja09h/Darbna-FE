@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import MapView, {
   Marker,
   Polyline,
@@ -28,12 +28,22 @@ interface InteractiveMapProps {
     startTime: Date | null;
     distance: number;
     duration: number;
+    startPoint?: {
+      latitude: number;
+      longitude: number;
+    };
+    endPoint?: {
+      latitude: number;
+      longitude: number;
+    };
   } | null;
+  onCloseRoute?: () => void;
 }
 
 const InteractiveMap = ({
   userLocation,
   currentRoute,
+  onCloseRoute,
 }: InteractiveMapProps) => {
   const { locations, routes, pois, pinnedPlaces, createPin } = useMap();
   const { user } = useAuth();
@@ -108,40 +118,7 @@ const InteractiveMap = ({
         headingSubscriptionRef.current.remove();
       }
     };
-  }, []);
-
-  useEffect(() => {
-    if (
-      userLocation?.coords.heading !== undefined &&
-      userLocation.coords.heading !== null &&
-      heading === null
-    ) {
-      setHeading(userLocation.coords.heading);
-    }
-  }, [userLocation?.coords.heading]);
-
-  // FIX: REMOVED the useEffect that was causing auto-zoom
-  // The old code was:
-  // useEffect(() => {
-  //   if (userLocation && mapRef.current) {
-  //     mapRef.current.animateToRegion(
-  //       {
-  //         latitude: userLocation.coords.latitude,
-  //         longitude: userLocation.coords.longitude,
-  //         latitudeDelta: 0.01,  // ← This caused the zoom-in
-  //         longitudeDelta: 0.01,
-  //       },
-  //       1000
-  //     );
-  //   }
-  // }, [userLocation?.coords.latitude, userLocation?.coords.longitude]);
-  //
-  // Why it was removed:
-  // - Every time user location updates, it triggered animateToRegion
-  // - The latitudeDelta/longitudeDelta of 0.01 are very small (highly zoomed)
-  // - This caused the map to zoom in automatically every few seconds
-  // - The initialRegion already handles the initial zoom level
-  // - showsUserLocation={true} already shows the user location without zooming
+  }, [userLocation]);
 
   const centerOnUserLocation = () => {
     if (userLocation && mapRef.current) {
@@ -164,6 +141,48 @@ const InteractiveMap = ({
   };
 
   const getInitialRegion = () => {
+    if (currentRoute && currentRoute.points.length > 0) {
+      // Use startPoint/endPoint if available, otherwise calculate from points
+      if (currentRoute.startPoint && currentRoute.endPoint) {
+        const midLatitude =
+          (currentRoute.startPoint.latitude + currentRoute.endPoint.latitude) /
+          2;
+        const midLongitude =
+          (currentRoute.startPoint.longitude +
+            currentRoute.endPoint.longitude) /
+          2;
+        const latDelta =
+          Math.abs(
+            currentRoute.startPoint.latitude - currentRoute.endPoint.latitude
+          ) * 1.5;
+        const lonDelta =
+          Math.abs(
+            currentRoute.startPoint.longitude - currentRoute.endPoint.longitude
+          ) * 1.5;
+
+        return {
+          latitude: midLatitude,
+          longitude: midLongitude,
+          latitudeDelta: latDelta,
+          longitudeDelta: lonDelta,
+        };
+      } else {
+        // Fallback: calculate bounds from points array
+        const latitudes = currentRoute.points.map((p) => p.latitude);
+        const longitudes = currentRoute.points.map((p) => p.longitude);
+        const minLat = Math.min(...latitudes);
+        const maxLat = Math.max(...latitudes);
+        const minLon = Math.min(...longitudes);
+        const maxLon = Math.max(...longitudes);
+
+        return {
+          latitude: (minLat + maxLat) / 2,
+          longitude: (minLon + maxLon) / 2,
+          latitudeDelta: Math.abs(maxLat - minLat) * 1.5,
+          longitudeDelta: Math.abs(maxLon - minLon) * 1.5,
+        };
+      }
+    }
     if (userLocation) {
       return {
         latitude: userLocation.coords.latitude,
@@ -196,7 +215,6 @@ const InteractiveMap = ({
           setShowPinModal(true);
         }}
       >
-        {/* Render custom OSM tiles for standard map */}
         {mapType === "standard" && (
           <UrlTile key="standard-tiles" urlTemplate={osmTileUrl} />
         )}
@@ -213,16 +231,28 @@ const InteractiveMap = ({
         ))}
 
         {currentRoute && currentRoute.points.length >= 2 && (
-          <Polyline
-            coordinates={currentRoute.points.map((point) => ({
-              latitude: point.latitude,
-              longitude: point.longitude,
-            }))}
-            strokeColor="#FF0000"
-            strokeWidth={5}
-            lineCap="round"
-            lineJoin="round"
-          />
+          <>
+            <Polyline
+              coordinates={currentRoute.points.map((point) => ({
+                latitude: point.latitude,
+                longitude: point.longitude,
+              }))}
+              strokeColor="#FF0000"
+              strokeWidth={5}
+              lineCap="round"
+              lineJoin="round"
+            />
+            {currentRoute.startPoint && (
+              <Marker coordinate={currentRoute.startPoint}>
+                <Ionicons name="flag" size={20} color="green" />
+              </Marker>
+            )}
+            {currentRoute.endPoint && (
+              <Marker coordinate={currentRoute.endPoint}>
+                <Ionicons name="flag-outline" size={20} color="black" />
+              </Marker>
+            )}
+          </>
         )}
 
         {routes.map((route) => (
@@ -287,7 +317,6 @@ const InteractiveMap = ({
         </View>
       )}
 
-      {/* Map Layer Switcher */}
       <MapLayerSwitcher currentMapType={mapType} onMapTypeChange={setMapType} />
 
       {userLocation && (
@@ -299,13 +328,16 @@ const InteractiveMap = ({
         </TouchableOpacity>
       )}
 
+      {currentRoute && onCloseRoute && (
+        <TouchableOpacity style={styles.closeButton} onPress={onCloseRoute}>
+          <Ionicons name="close" size={20} color="black" />
+        </TouchableOpacity>
+      )}
+
       <PinCreationModal
         visible={showPinModal}
+        onClose={() => setShowPinModal(false)}
         location={selectedLocation}
-        onClose={() => {
-          setShowPinModal(false);
-          setSelectedLocation(null);
-        }}
         onCreate={handleCreatePin}
       />
     </View>
@@ -317,45 +349,49 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   map: {
-    flex: 1,
-  },
-  compassContainer: {
-    position: "absolute",
-    top: 16,
-    alignSelf: "center",
-    zIndex: 10,
-  },
-  compassText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#3A1D1A",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#3A1D1A",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    ...StyleSheet.absoluteFillObject,
   },
   myLocationButton: {
     position: "absolute",
-    bottom: 100,
-    right: 16,
+    bottom: 120,
+    right: 20,
     backgroundColor: "white",
-    borderRadius: 24,
-    width: 48,
-    height: 48,
-    justifyContent: "center",
-    alignItems: "center",
+    borderRadius: 50,
+    padding: 12,
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  compassContainer: {
+    position: "absolute",
+    top: 20,
+    left: "50%",
+    transform: [{ translateX: -50 }],
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    elevation: 5,
+  },
+  compassText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 70,
+    right: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 8,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
 });
 
