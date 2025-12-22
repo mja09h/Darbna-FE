@@ -27,6 +27,8 @@ interface CustomAlertProps {
   type?: "success" | "error" | "warning" | "info";
   scrollable?: boolean;
   monospace?: boolean;
+  showCloseButton?: boolean;
+  onClose?: () => void;
 }
 
 const CustomAlert: React.FC<CustomAlertProps> = ({
@@ -38,6 +40,8 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
   type = "info",
   scrollable = false,
   monospace = false,
+  showCloseButton = false,
+  onClose,
 }) => {
   const { colors } = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
@@ -106,6 +110,18 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
             },
           ]}
         >
+          {showCloseButton && (
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                onDismiss();
+                onClose?.();
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={24} color="#a89080" />
+            </TouchableOpacity>
+          )}
           <View style={styles.contentContainer}>
             <View
               style={[styles.iconContainer, { borderColor: iconInfo.color }]}
@@ -210,7 +226,6 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
 };
 
 export default CustomAlert;
-
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -296,5 +311,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 17,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    zIndex: 10,
   },
 });
