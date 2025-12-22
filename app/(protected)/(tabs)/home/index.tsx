@@ -6,6 +6,7 @@ import {
   Text,
   SafeAreaView,
   Image,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -13,6 +14,8 @@ import { useNavigation, useRouter, useLocalSearchParams } from "expo-router";
 import { useRouteRecording } from "../../../../context/RouteRecordingContext";
 import { useSettings } from "../../../../context/SettingsContext";
 import { useAlert } from "../../../../context/AlertContext";
+import { useTheme } from "../../../../context/ThemeContext";
+import CustomAlert from "../../../../components/CustomAlert";
 import { IGPSPoint } from "../../../../types/route";
 import InteractiveMap from "../../../../components/InteractiveMap";
 import SOSModal from "../../../../components/SOSModal";
@@ -36,6 +39,7 @@ const HomePage = () => {
   } = useRouteRecording();
   const { units } = useSettings();
   const { alert } = useAlert();
+  const { colors } = useTheme();
 
   const navigation = useNavigation();
   const [screenshotUri, setScreenshotUri] = useState<string | undefined>(
@@ -43,6 +47,7 @@ const HomePage = () => {
   );
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSOSModalVisible, setSOSModalVisible] = useState(false);
+  const [showStopRecordingAlert, setShowStopRecordingAlert] = useState(false);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null
   );
@@ -181,24 +186,25 @@ const HomePage = () => {
 
   const handleStopRecording = async () => {
     await stopRecording(); // Pause the recording first
-    alert("Stop Recording", "Do you want to save this route?", [
-      {
-        text: "Discard",
-        onPress: async () => {
-          await discardRecording(); // Use discardRecording to clear the route
-          setRecordingTime(0);
-          setScreenshotUri(undefined);
-        },
-        style: "destructive",
-      },
-      {
-        text: "Save",
-        onPress: () => {
-          setScreenshotUri(undefined);
-          setShowSaveModal(true);
-        },
-      },
-    ]);
+    setShowStopRecordingAlert(true);
+  };
+
+  const handleCancelStopRecording = async () => {
+    setShowStopRecordingAlert(false);
+    await resumeRecording(); // Resume recording when canceling
+  };
+
+  const handleDiscardRoute = async () => {
+    setShowStopRecordingAlert(false);
+    await discardRecording(); // Use discardRecording to clear the route
+    setRecordingTime(0);
+    setScreenshotUri(undefined);
+  };
+
+  const handleSaveRouteFromAlert = () => {
+    setShowStopRecordingAlert(false);
+    setScreenshotUri(undefined);
+    setShowSaveModal(true);
   };
 
   const handleSaveRoute = async (
@@ -338,29 +344,48 @@ const HomePage = () => {
           (() => {
             const isPaused = !isRecording;
             return (
-              <View style={styles.statusBar}>
+              <View
+                style={[styles.statusBar, isPaused && styles.statusBarPaused]}
+              >
                 <View style={styles.statusContent}>
                   <View style={styles.statusItem}>
-                    <Text style={styles.statusLabel}>
-                      {isPaused ? "Paused" : "Recording"}
-                    </Text>
+                    <View style={styles.statusItemHeader}>
+                      {!isPaused && <View style={styles.recordingIndicator} />}
+                      <Text style={styles.statusLabel}>
+                        {isPaused ? "Paused" : "Recording"}
+                      </Text>
+                    </View>
                     <Text style={styles.statusValue}>
                       {formatTime(recordingTime)}
                     </Text>
                   </View>
+                  <View style={styles.statusDivider} />
                   <View style={styles.statusItem}>
-                    <Text style={styles.statusLabel}>Distance</Text>
+                    <View style={styles.statusItemHeader}>
+                      <Ionicons
+                        name="resize-outline"
+                        size={14}
+                        color={COLORS.white}
+                        style={styles.statusIcon}
+                      />
+                      <Text style={styles.statusLabel}>Distance</Text>
+                    </View>
                     <Text style={styles.statusValue}>
                       {formatDistance(currentRoute.distance)}
                     </Text>
                   </View>
+                  <View style={styles.statusDivider} />
                   <TouchableOpacity
-                    style={styles.pauseButton}
+                    style={[
+                      styles.pauseButton,
+                      isPaused && styles.pauseButtonPaused,
+                    ]}
                     onPress={isPaused ? resumeRecording : pauseRecording}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
                       name={isPaused ? "play" : "pause"}
-                      size={20}
+                      size={22}
                       color={COLORS.white}
                     />
                   </TouchableOpacity>
@@ -388,6 +413,29 @@ const HomePage = () => {
           visible={isSOSModalVisible}
           onClose={() => setSOSModalVisible(false)}
           userLocation={userLocation}
+        />
+
+        {/* Stop Recording Alert */}
+        <CustomAlert
+          visible={showStopRecordingAlert}
+          title="Stop Recording"
+          message="Do you want to save this route?"
+          buttons={[
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: handleDiscardRoute,
+            },
+            {
+              text: "Save",
+              style: "default",
+              onPress: handleSaveRouteFromAlert,
+            },
+          ]}
+          onDismiss={handleCancelStopRecording}
+          type="warning"
+          showCloseButton={true}
+          onClose={handleCancelStopRecording}
         />
       </View>
     </SafeAreaView>
@@ -496,17 +544,24 @@ const styles = StyleSheet.create({
   statusBar: {
     position: "absolute",
     bottom: 20,
-    left: 10,
-    right: 10,
+    left: 16,
+    right: 16,
     backgroundColor: COLORS.desertOrange,
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 20,
+    padding: 18,
     zIndex: 10,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
+    elevation: 8,
+    shadowColor: COLORS.desertOrange,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  statusBarPaused: {
+    backgroundColor: "#a89080",
+    shadowColor: "#a89080",
+    shadowOpacity: 0.3,
   },
   statusContent: {
     flexDirection: "row",
@@ -517,24 +572,66 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
+  statusItemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  recordingIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#FF3B30",
+    marginRight: 6,
+    shadowColor: "#FF3B30",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusIcon: {
+    marginRight: 4,
+    opacity: 0.9,
+  },
   statusLabel: {
     color: COLORS.white,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
-    opacity: 0.9,
+    opacity: 0.95,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
   },
   statusValue: {
     color: COLORS.white,
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 4,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  statusDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    marginHorizontal: 8,
   },
   pauseButton: {
-    padding: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.4)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  pauseButtonPaused: {
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    borderColor: "rgba(255, 255, 255, 0.5)",
   },
 });
 
