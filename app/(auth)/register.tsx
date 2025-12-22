@@ -176,7 +176,7 @@ const Register = () => {
       return t.auth.passwordRequired;
     }
 
-    if (value.length < 8) {
+    if (value.length < 5) {
       return t.auth.passwordTooShort;
     }
 

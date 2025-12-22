@@ -17,6 +17,7 @@ import { useAuth } from "../../../../../context/AuthContext";
 import { useAlert } from "../../../../../context/AlertContext";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
+import * as ImagePicker from "expo-image-picker";
 import Constants from "expo-constants";
 import { Ionicons } from "@expo/vector-icons";
 import CustomAlert, {
@@ -39,6 +40,8 @@ const SettingsScreen = () => {
     useState<Location.PermissionStatus | null>(null);
   const [notificationStatus, setNotificationStatus] =
     useState<Notifications.PermissionStatus | null>(null);
+  const [cameraStatus, setCameraStatus] =
+    useState<ImagePicker.PermissionStatus | null>(null);
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   const appState = useRef(AppState.currentState);
 
@@ -101,6 +104,10 @@ const SettingsScreen = () => {
       // Check notification permission
       const notificationResponse = await Notifications.getPermissionsAsync();
       setNotificationStatus(notificationResponse.status);
+
+      // Check camera permission
+      const cameraResponse = await ImagePicker.getCameraPermissionsAsync();
+      setCameraStatus(cameraResponse.status);
     } catch (error) {
       console.log("Error checking permissions:", error);
     } finally {
@@ -173,6 +180,30 @@ const SettingsScreen = () => {
       alert(
         t.common.error,
         "Unable to request notification permission. Please try again."
+      );
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      setCameraStatus(status);
+      if (status === "denied") {
+        alert(t.settings.permissionRequired, t.settings.openSettingsMessage, [
+          { text: t.common.cancel, style: "cancel" },
+          {
+            text: t.settings.openSettings,
+            onPress: openAppSettings,
+          },
+        ]);
+      } else if (status !== "granted") {
+        alert(t.common.error, t.settings.permissionRequired);
+      }
+    } catch (error) {
+      console.log("Error requesting camera permission:", error);
+      alert(
+        t.common.error,
+        "Unable to request camera permission. Please try again."
       );
     }
   };
@@ -565,6 +596,16 @@ const SettingsScreen = () => {
                   t.settings.notificationDescription,
                   notificationStatus,
                   requestNotificationPermission,
+                  openAppSettings
+                )}
+              </View>
+
+              <View style={{ marginTop: 12 }}>
+                {renderPermissionItem(
+                  t.settings.camera,
+                  t.settings.cameraDescription,
+                  cameraStatus,
+                  requestCameraPermission,
                   openAppSettings
                 )}
               </View>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   View,
@@ -84,8 +84,49 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const MAX_IMAGES = 4;
+  const [showImageSourceModal, setShowImageSourceModal] = useState(false);
+
+  const takePhoto = async () => {
+    setShowImageSourceModal(false);
+
+    // Check if we've reached the max
+    if (images.length >= MAX_IMAGES) {
+      alert(
+        "Maximum Images",
+        `You can only add up to ${MAX_IMAGES} images per pin.`
+      );
+      return;
+    }
+
+    // Request camera permissions
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      alert(
+        "Permission Required",
+        "Sorry, we need camera permissions to take photos!"
+      );
+      return;
+    }
+
+    let result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      const newImage = result.assets[0];
+      if (newImage.uri) {
+        setImages([...images, newImage]);
+      } else {
+        alert("Error", "Failed to capture image");
+      }
+    }
+  };
 
   const pickImage = async () => {
+    setShowImageSourceModal(false);
+
     // Check if we've reached the max
     if (images.length >= MAX_IMAGES) {
       alert(
@@ -197,12 +238,18 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
     }
   };
 
+  // Debug log
+  useEffect(() => {
+    console.log("📍 PinCreationModal visible:", visible, "location:", location);
+  }, [visible, location]);
+
   return (
     <Modal
       visible={visible}
       transparent={true}
       animationType="slide"
       onRequestClose={handleClose}
+      statusBarTranslucent={true}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
@@ -252,7 +299,7 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
               {images.length < MAX_IMAGES && (
                 <TouchableOpacity
                   style={styles.imagePicker}
-                  onPress={pickImage}
+                  onPress={() => setShowImageSourceModal(true)}
                   disabled={loading}
                 >
                   <View style={styles.imagePlaceholder}>
@@ -431,6 +478,49 @@ const PinCreationModal: React.FC<PinCreationModalProps> = ({
             />
           </View>
         </View>
+      </Modal>
+
+      {/* Image Source Selection Modal */}
+      <Modal
+        visible={showImageSourceModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImageSourceModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.sourceModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowImageSourceModal(false)}
+        >
+          <View style={styles.sourceModalContent}>
+            <Text style={styles.sourceModalTitle}>Select Image Source</Text>
+
+            <TouchableOpacity
+              style={styles.sourceOption}
+              onPress={takePhoto}
+              disabled={loading}
+            >
+              <Ionicons name="camera" size={32} color={COLORS.desertOrange} />
+              <Text style={styles.sourceOptionText}>Take Photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sourceOption}
+              onPress={pickImage}
+              disabled={loading}
+            >
+              <Ionicons name="images" size={32} color={COLORS.desertOrange} />
+              <Text style={styles.sourceOptionText}>Choose from Gallery</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sourceCancelButton}
+              onPress={() => setShowImageSourceModal(false)}
+            >
+              <Text style={styles.sourceCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </Modal>
   );
@@ -660,6 +750,50 @@ const styles = StyleSheet.create({
   },
   categoryItemTextSelected: {
     color: COLORS.desertOrange,
+    fontWeight: "600",
+  },
+  sourceModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sourceModalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    width: "80%",
+    maxWidth: 300,
+  },
+  sourceModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.darkSandBrown,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  sourceOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.offWhiteDesert,
+    marginBottom: 12,
+  },
+  sourceOptionText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.darkSandBrown,
+    marginLeft: 16,
+  },
+  sourceCancelButton: {
+    marginTop: 8,
+    padding: 12,
+    alignItems: "center",
+  },
+  sourceCancelText: {
+    fontSize: 16,
+    color: COLORS.lightText,
     fontWeight: "600",
   },
 });
